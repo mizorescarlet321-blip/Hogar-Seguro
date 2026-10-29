@@ -10,9 +10,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <!-- Leaflet Maps CSS & JS (HTTPS for GitHub Pages) -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <!-- Leaflet CSS & JS (HTTPS para GitHub Pages) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
         tailwind.config = {
@@ -30,164 +30,217 @@
         };
     </script>
 
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f8fafc;
-            color: #0f172a;
-        }
-        .btn-large {
-            min-height: 48px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            border-radius: 0.75rem;
-            transition: all 0.2s ease;
-        }
-        /* Explicit fixed height for GitHub Pages reliability */
-        #mapa-huaraz {
-            width: 100%;
-            height: 480px;
-            min-height: 480px;
-            border-radius: 0.75rem;
-            z-index: 10;
-            background-color: #e2e8f0;
-        }
-        @media (max-width: 640px) {
-            #mapa-huaraz {
-                height: 390px;
-                min-height: 390px;
+    <!-- SCRIPT DE NAVEGACIÓN BLINDADO EN EL HEAD (NUNCA FALLA AL CAMBIAR PESTAÑAS) -->
+    <script>
+        window.rolActual = 'ciudadano';
+        window.pestanaActual = 'mapa';
+
+        window.mostrarAviso = function(titulo, mensaje) {
+            var box = document.getElementById('toastModal');
+            var t = document.getElementById('toastTitle');
+            var m = document.getElementById('toastMessage');
+            if (box && t && m) {
+                t.textContent = titulo;
+                m.textContent = mensaje;
+                box.classList.remove('hidden');
+                if (window.toastTimer) clearTimeout(window.toastTimer);
+                window.toastTimer = setTimeout(function() {
+                    box.classList.add('hidden');
+                }, 4800);
             }
-        }
-        .leaflet-popup-content-wrapper {
-            border-radius: 12px !important;
-            padding: 2px !important;
-        }
-        body.modo-ligero * {
-            box-shadow: none !important;
-            background-image: none !important;
-            transition: none !important;
-            animation: none !important;
-        }
+        };
+
+        window.cambiarRol = function(nuevoRol, silencioso) {
+            window.rolActual = nuevoRol;
+            var roles = ['ciudadano', 'funcionario', 'admin'];
+            for (var i = 0; i < roles.length; i++) {
+                var r = roles[i];
+                var vista = document.getElementById('vista-' + r);
+                var btn = document.getElementById('btnRol-' + r);
+                if (vista) {
+                    if (r === nuevoRol) {
+                        vista.classList.remove('hidden');
+                    } else {
+                        vista.classList.add('hidden');
+                    }
+                }
+                if (btn) {
+                    if (r === nuevoRol) {
+                        btn.className = 'px-3 py-1.5 rounded-lg text-xs font-extrabold bg-white text-blue-900 shadow';
+                    } else {
+                        btn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold text-blue-200 hover:text-white';
+                    }
+                }
+            }
+            var nav = document.getElementById('barraPestanasCiudadano');
+            if (nav) {
+                if (nuevoRol === 'ciudadano') {
+                    nav.classList.remove('hidden');
+                } else {
+                    nav.classList.add('hidden');
+                }
+            }
+            if (nuevoRol === 'ciudadano' && typeof window.refrescarMapa === 'function') {
+                setTimeout(window.refrescarMapa, 150);
+            }
+            if (!silencioso) {
+                var nombres = {
+                    ciudadano: 'Vista Ciudadano: Familias de Huaraz',
+                    funcionario: 'Vista Funcionario Municipal: Gestión de Lotes, Trámites y Puntos',
+                    admin: 'Vista Administrador: KPIs Municipales y Fases 1, 2 y 3'
+                };
+                window.mostrarAviso('Cambio de Perfil', nombres[nuevoRol] || '');
+            }
+        };
+
+        window.cambiarPestana = function(tabId) {
+            window.cambiarRol('ciudadano', true);
+            window.pestanaActual = tabId;
+            var tabs = ['mapa', 'tramite', 'simulador', 'puntos', 'denuncias', 'capacitacion'];
+            for (var i = 0; i < tabs.length; i++) {
+                var id = tabs[i];
+                var sec = document.getElementById('sec-' + id);
+                var btn = document.getElementById('btnTab-' + id);
+                if (sec) {
+                    if (id === tabId) {
+                        sec.classList.remove('hidden');
+                    } else {
+                        sec.classList.add('hidden');
+                    }
+                }
+                if (btn) {
+                    if (id === tabId) {
+                        btn.className = 'nav-tab-btn shrink-0 px-4 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm flex items-center gap-2 bg-blue-900 text-white shadow';
+                    } else if (id === 'denuncias') {
+                        btn.className = 'nav-tab-btn shrink-0 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200';
+                    } else {
+                        btn.className = 'nav-tab-btn shrink-0 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-800';
+                    }
+                }
+            }
+            if (tabId === 'mapa' && typeof window.refrescarMapa === 'function') {
+                setTimeout(window.refrescarMapa, 150);
+            }
+        };
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #0f172a; }
+        .btn-touch { min-height: 48px; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; border-radius: 0.75rem; transition: all 0.15s ease; }
+        #mapa-huaraz { width: 100%; height: 480px; border-radius: 0.75rem; z-index: 10; background: #e2e8f0; }
+        @media (max-width: 640px) { #mapa-huaraz { height: 380px; } }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        body.modo-ligero * { box-shadow: none !important; transition: none !important; animation: none !important; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between">
 
-    <!-- SIMULATED SMS PUSH ALERT MODAL -->
-    <div id="smsAlertBanner" class="hidden fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-lg">
-        <div class="bg-slate-900 text-white rounded-2xl p-4 shadow-2xl border-2 border-red-500">
-            <div class="flex items-start justify-between gap-3">
-                <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-red-400">
-                    <i class="fa-solid fa-comment-sms text-lg animate-pulse"></i>
-                    <span>ALERTA SMS GEOCERCA • INDECI / MUNI HUARAZ</span>
-                </div>
-                <button type="button" id="btnCloseSms" class="text-slate-400 hover:text-white px-2 py-1 text-sm font-bold">✕</button>
-            </div>
-            <p class="mt-2 text-sm sm:text-base font-semibold leading-snug text-white">
-                🚨 ALERTA MUNI HUARAZ: Ud. ha ingresado a la Faja Marginal del Río Quilcay / Ruta de Aluvión. Zona intangible de ALTO RIESGO. PROHIBIDO construir o comprar terrenos aquí. Evite estafas.
-            </p>
-            <div class="mt-3 flex flex-wrap gap-2">
-                <button type="button" data-goto-tab="catalogo" class="bg-green-600 hover:bg-green-500 text-white text-xs font-bold px-3 py-2 rounded-lg">
-                    <i class="fa-solid fa-shield-heart mr-1"></i> Ver Lotes Seguros
-                </button>
-                <button type="button" data-goto-tab="denuncias" class="bg-red-700 hover:bg-red-600 text-white text-xs font-bold px-3 py-2 rounded-lg">
-                    <i class="fa-solid fa-bullhorn mr-1"></i> Denunciar Traficante
-                </button>
-            </div>
+    <!-- BANNER SIMULADO DE ALERTA SMS POR GEOCERCA -->
+    <div id="smsBanner" class="hidden fixed top-3 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-lg bg-slate-900 text-white rounded-2xl p-4 shadow-2xl border-2 border-red-500">
+        <div class="flex items-center justify-between">
+            <span class="text-xs font-extrabold uppercase tracking-wider text-red-400 flex items-center gap-2">
+                <i class="fa-solid fa-comment-sms text-lg"></i> SMS AUTOMÁTICO • INDECI / MUNI HUARAZ
+            </span>
+            <button type="button" onclick="cerrarSms()" class="text-slate-300 hover:text-white text-xs font-bold px-2 py-1">✕ Cerrar</button>
+        </div>
+        <p class="mt-2 text-sm font-semibold leading-snug">
+            🚨 ALERTA MUNI HUARAZ: Ud. ha ingresado a una Zona de Alto Riesgo (Faja Marginal Río Quilcay / Ladera Rataquenua). PROHIBIDO CONSTRUIR O COMPRAR LOTES AQUÍ. Evite estafas y proteja a su familia.
+        </p>
+        <div class="mt-3 flex flex-wrap gap-2">
+            <button type="button" onclick="cambiarPestana('mapa'); cerrarSms();" class="bg-green-600 hover:bg-green-500 text-white text-xs font-bold px-3 py-2 rounded-lg">
+                Ver Lotes Formales Seguros
+            </button>
+            <button type="button" onclick="cambiarPestana('denuncias'); cerrarSms();" class="bg-red-700 hover:bg-red-600 text-white text-xs font-bold px-3 py-2 rounded-lg">
+                Denunciar Tráfico de Terrenos
+            </button>
         </div>
     </div>
 
-    <!-- TOP ACCESSIBILITY & PRESENTIAL BACKUP BAR -->
-    <div class="bg-slate-900 text-white text-xs sm:text-sm py-2 px-3 border-b border-slate-700">
+    <!-- BARRA SUPERIOR DE ACCESIBILIDAD Y CANAL PRESENCIAL -->
+    <div class="bg-slate-900 text-white text-xs py-2 px-3 border-b border-slate-700">
         <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
             <div class="flex items-center gap-2">
-                <span class="bg-amber-400 text-slate-950 font-extrabold px-2 py-0.5 rounded text-xs">ATENCIÓN PRESENCIAL</span>
-                <span><strong>Ventanilla 4 - Plaza de Armas de Huaraz</strong> • Central: <strong>(043) 42-1661</strong></span>
+                <span class="bg-amber-400 text-slate-950 font-black px-2 py-0.5 rounded">RESPALDO PRESENCIAL</span>
+                <span>Atención gratuita en <strong>Ventanilla 4 - Municipalidad Provincial de Huaraz (Plaza de Armas)</strong> • Tel: <strong>(043) 42-1661</strong></span>
             </div>
             <div class="flex items-center gap-2 ml-auto">
-                <button type="button" id="btnLiteMode" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 px-2.5 py-1 rounded-lg font-semibold text-xs">
-                    <i class="fa-solid fa-gauge-simple-high text-green-400 mr-1"></i>
-                    <span id="liteModeLabel">Modo Ligero: OFF</span>
+                <button type="button" onclick="alternarModoLigero()" id="btnModoLigero" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 px-2.5 py-1 rounded-lg font-bold">
+                    <i class="fa-solid fa-bolt text-green-400 mr-1"></i> Modo Ligero: OFF
                 </button>
-                <button type="button" id="btnLargeText" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 px-2.5 py-1 rounded-lg font-bold text-xs">
+                <button type="button" onclick="alternarLetraGrande()" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 px-2.5 py-1 rounded-lg font-bold">
                     <i class="fa-solid fa-text-height mr-1"></i> Letra Grande
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- INSTITUTIONAL HEADER -->
-    <header class="bg-muniBlue text-white shadow-lg sticky top-0 z-40">
-        <div class="max-w-7xl mx-auto px-3 sm:px-6 py-3">
-            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <div class="w-12 h-12 rounded-xl bg-white text-muniBlue flex flex-col items-center justify-center shadow border-2 border-amber-400 shrink-0">
-                            <i class="fa-solid fa-mountain-sun text-xl text-muniGreen"></i>
-                            <span class="text-[9px] font-black uppercase">HUARAZ</span>
-                        </div>
-                        <div>
-                            <span class="text-[11px] uppercase tracking-wider bg-blue-800 px-2 py-0.5 rounded font-semibold text-blue-100">Municipalidad Provincial de Huaraz</span>
-                            <h1 class="text-lg sm:text-2xl font-extrabold leading-tight">Huaraz Lote Seguro</h1>
-                        </div>
+    <!-- ENCABEZADO INSTITUCIONAL Y SELECTOR DE ROLES -->
+    <header class="bg-muniBlue text-white shadow-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-3 sm:px-6 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-xl bg-white text-muniBlue flex flex-col items-center justify-center shadow border-2 border-amber-400 shrink-0">
+                        <i class="fa-solid fa-mountain-sun text-xl text-muniGreen"></i>
+                        <span class="text-[9px] font-black uppercase">HUARAZ</span>
                     </div>
-                    <button type="button" id="btnOpenLoginMobile" class="md:hidden bg-amber-400 text-slate-950 font-extrabold px-3 py-2 rounded-xl text-xs">
-                        <i class="fa-solid fa-id-card mr-1"></i> <span id="mobileUserBadge">DNI 31654892</span>
+                    <div>
+                        <span class="text-[11px] uppercase tracking-wider bg-blue-800 px-2 py-0.5 rounded font-semibold text-blue-100">Municipalidad Provincial de Huaraz</span>
+                        <h1 class="text-lg sm:text-2xl font-extrabold leading-tight">Huaraz Lote Seguro</h1>
+                    </div>
+                </div>
+                <button type="button" onclick="abrirModalDni()" class="md:hidden bg-amber-400 text-slate-950 font-extrabold px-3 py-2 rounded-xl text-xs">
+                    <i class="fa-solid fa-id-card mr-1"></i> <span id="badgeDniMovil">DNI 31654892</span>
+                </button>
+            </div>
+
+            <!-- Selector de Rol: Ciudadano / Funcionario / Administrador -->
+            <div class="flex flex-wrap items-center justify-between md:justify-end gap-2">
+                <div class="bg-muniBlueDark p-1 rounded-xl flex items-center gap-1 border border-blue-700 w-full sm:w-auto">
+                    <button type="button" id="btnRol-ciudadano" onclick="cambiarRol('ciudadano')" class="px-3 py-1.5 rounded-lg text-xs font-extrabold bg-white text-blue-900 shadow">
+                        <i class="fa-solid fa-users mr-1"></i> Ciudadano
+                    </button>
+                    <button type="button" id="btnRol-funcionario" onclick="cambiarRol('funcionario')" class="px-3 py-1.5 rounded-lg text-xs font-bold text-blue-200 hover:text-white">
+                        <i class="fa-solid fa-user-tie mr-1"></i> Funcionario
+                    </button>
+                    <button type="button" id="btnRol-admin" onclick="cambiarRol('admin')" class="px-3 py-1.5 rounded-lg text-xs font-bold text-blue-200 hover:text-white">
+                        <i class="fa-solid fa-chart-pie mr-1"></i> Administrador
                     </button>
                 </div>
-
-                <!-- ROLE SWITCHER -->
-                <div class="flex flex-wrap items-center justify-between md:justify-end gap-2">
-                    <div class="bg-muniBlueDark p-1 rounded-xl flex items-center gap-1 border border-blue-700 w-full sm:w-auto">
-                        <button type="button" data-role="ciudadano" class="role-btn flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-muniBlue shadow">
-                            <i class="fa-solid fa-users mr-1"></i> Ciudadano
-                        </button>
-                        <button type="button" data-role="funcionario" class="role-btn flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-bold text-blue-200 hover:text-white">
-                            <i class="fa-solid fa-user-tie mr-1"></i> Funcionario
-                        </button>
-                        <button type="button" data-role="admin" class="role-btn flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-bold text-blue-200 hover:text-white">
-                            <i class="fa-solid fa-chart-pie mr-1"></i> Administrador
-                        </button>
-                    </div>
-
-                    <button type="button" id="btnOpenLoginDesktop" class="hidden md:flex items-center gap-2 bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold px-4 py-2 rounded-xl text-xs shadow">
-                        <i class="fa-solid fa-id-card text-sm"></i>
-                        <span id="desktopUserBadge">DNI: 31654892 (Juan Rimac)</span>
-                    </button>
-                </div>
+                <button type="button" onclick="abrirModalDni()" class="hidden md:flex items-center gap-2 bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold px-3.5 py-2 rounded-xl text-xs shadow">
+                    <i class="fa-solid fa-id-card"></i>
+                    <span id="badgeDniDesktop">DNI: 31654892 (Juan Rimac)</span>
+                </button>
             </div>
         </div>
 
-        <!-- CITIZEN NAVIGATION TABS -->
-        <nav id="citizenNav" class="bg-white text-slate-800 border-b border-slate-200">
+        <!-- BARRA DE PESTAÑAS GRANDES Y SIMPLES PARA EL CIUDADANO -->
+        <nav id="barraPestanasCiudadano" class="bg-white text-slate-800 border-b border-slate-200">
             <div class="max-w-7xl mx-auto px-2 sm:px-6">
                 <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-2">
-                    <button type="button" data-tab="catalogo" class="nav-tab-btn shrink-0 px-3.5 py-2 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-1.5 bg-muniBlue text-white">
+                    <button type="button" id="btnTab-mapa" data-tab="mapa" onclick="cambiarPestana('mapa')" class="nav-tab-btn shrink-0 px-4 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm flex items-center gap-2 bg-blue-900 text-white shadow">
                         <i class="fa-solid fa-map-location-dot"></i>
-                        <span>1. Mapa y Lotes Libres</span>
+                        <span>1. Mapa de Lotes y Riesgos</span>
                     </button>
-                    <button type="button" data-tab="tramite" class="nav-tab-btn shrink-0 px-3.5 py-2 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800">
+                    <button type="button" id="btnTab-tramite" data-tab="tramite" onclick="cambiarPestana('tramite')" class="nav-tab-btn shrink-0 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-800">
                         <i class="fa-solid fa-file-circle-check text-blue-700"></i>
                         <span>2. Trámite (&lt; 30 días)</span>
                     </button>
-                    <button type="button" data-tab="simulador" class="nav-tab-btn shrink-0 px-3.5 py-2 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800">
+                    <button type="button" id="btnTab-simulador" data-tab="simulador" onclick="cambiarPestana('simulador')" class="nav-tab-btn shrink-0 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-800">
                         <i class="fa-solid fa-calculator text-emerald-700"></i>
-                        <span>3. Simulador Cuotas</span>
+                        <span>3. Simulador de Cuota</span>
                     </button>
-                    <button type="button" data-tab="puntos" class="nav-tab-btn shrink-0 px-3.5 py-2 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800">
+                    <button type="button" id="btnTab-puntos" data-tab="puntos" onclick="cambiarPestana('puntos')" class="nav-tab-btn shrink-0 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-800">
                         <i class="fa-solid fa-star text-amber-500"></i>
                         <span>4. Puntos Huaraz</span>
-                        <span id="navPointsBadge" class="bg-amber-100 text-amber-900 text-xs font-extrabold px-2 py-0.5 rounded-full">650 pts</span>
+                        <span id="badgePuntosNav" class="bg-amber-100 text-amber-900 text-xs font-extrabold px-2 py-0.5 rounded-full">650 pts</span>
                     </button>
-                    <button type="button" data-tab="denuncias" class="nav-tab-btn shrink-0 px-3.5 py-2 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200">
+                    <button type="button" id="btnTab-denuncias" data-tab="denuncias" onclick="cambiarPestana('denuncias')" class="nav-tab-btn shrink-0 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200">
                         <i class="fa-solid fa-triangle-exclamation text-red-600"></i>
                         <span>5. Denunciar Invasión</span>
                     </button>
-                    <button type="button" data-tab="capacitacion" class="nav-tab-btn shrink-0 px-3.5 py-2 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800">
-                        <i class="fa-solid fa-gavel text-indigo-700"></i>
+                    <button type="button" id="btnTab-capacitacion" data-tab="capacitacion" onclick="cambiarPestana('capacitacion')" class="nav-tab-btn shrink-0 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-800">
+                        <i class="fa-solid fa-graduation-cap text-indigo-700"></i>
                         <span>6. Charlas y Condenas</span>
                     </button>
                 </div>
@@ -195,1198 +248,989 @@
         </nav>
     </header>
 
-    <!-- MAIN CONTENT -->
+    <!-- CONTENEDOR PRINCIPAL -->
     <main class="flex-grow max-w-7xl w-full mx-auto px-3 sm:px-6 py-5">
 
-        <!-- ========================================================== -->
-        <!-- CITIZEN VIEW                                               -->
-        <!-- ========================================================== -->
-        <div id="view-ciudadano" class="space-y-6">
+        <!-- ======================================================= -->
+        <!-- VISTA 1: CIUDADANO (6 MÓDULOS COMPLETOS)                -->
+        <!-- ======================================================= -->
+        <div id="vista-ciudadano" class="space-y-6">
 
-            <!-- TAB 1: MAPA INTERACTIVO GOOGLE MAPS + PLANO DE MANZANEO -->
-            <section id="tab-catalogo" class="tab-section space-y-6">
-                <!-- Quick Hero Strip -->
-                <div class="bg-gradient-to-r from-muniBlue via-blue-800 to-muniGreen rounded-2xl p-4 sm:p-6 text-white shadow flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                    <div class="space-y-1">
-                        <span class="text-xs font-extrabold uppercase bg-white/20 px-2.5 py-0.5 rounded-full">Catastro Oficial Huaraz 2026</span>
-                        <h2 class="text-xl sm:text-2xl font-extrabold">Terrenos Formales en Terrazas Altas Seguras (Fuera del Río)</h2>
-                        <p class="text-xs sm:text-sm text-blue-100">Toque los polígonos <strong>VERDES</strong> para ver lotes con Partida SUNARP, o las zonas <strong>ROJAS</strong> donde está prohibido construir.</p>
+            <!-- PESTAÑA 1: MAPA DE LOTES FORMALES Y ZONAS DE RIESGO -->
+            <section id="sec-mapa" class="space-y-6">
+                <!-- Banner Informativo + Botón de Alerta SMS -->
+                <div class="bg-gradient-to-r from-muniBlue to-muniGreen rounded-2xl p-4 sm:p-6 text-white shadow flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div>
+                        <span class="bg-white/20 text-xs font-extrabold px-2.5 py-1 rounded-full uppercase">Catastro Oficial Huaraz 2026</span>
+                        <h2 class="text-xl sm:text-2xl font-extrabold mt-1">Acceda a lotes formales en terrazas seguras y evite quebradas o riberas</h2>
+                        <p class="text-xs sm:text-sm text-blue-100 mt-1">Toque las zonas VERDES para separar un lote con título SUNARP o las zonas ROJAS para ver áreas intangibles de alto riesgo.</p>
                     </div>
                     <div class="flex flex-wrap gap-2 shrink-0">
-                        <button type="button" id="btnTestSms" class="btn-large bg-red-600 hover:bg-red-500 text-white px-4 py-2.5 text-xs sm:text-sm shadow border border-red-400">
+                        <button type="button" onclick="dispararSimulacionSms()" class="btn-touch bg-red-600 hover:bg-red-500 text-white px-4 py-2.5 text-xs sm:text-sm shadow border border-red-300">
                             <i class="fa-solid fa-satellite-dish mr-2"></i> Probar Alerta SMS Geocerca
                         </button>
-                        <a href="https://www.google.com/maps?q=-9.5275,-77.5280" target="_blank" rel="noopener noreferrer" class="btn-large bg-amber-400 hover:bg-amber-300 text-slate-950 px-4 py-2.5 text-xs sm:text-sm shadow">
-                            <i class="fa-brands fa-google mr-1.5"></i> Abrir Google Maps Oficial ↗
+                        <a id="btnAbrirGoogleMapsDefault" href="https://www.google.com/maps/search/?api=1&query=-9.5275,-77.5280" target="_blank" rel="noopener noreferrer" class="btn-touch bg-amber-400 hover:bg-amber-300 text-slate-950 px-4 py-2.5 text-xs sm:text-sm shadow">
+                            <i class="fa-brands fa-google mr-2"></i> Abrir en Google Maps Oficial
                         </a>
                     </div>
                 </div>
 
-                <!-- Map Card -->
-                <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 space-y-3">
-                    <!-- Controls Bar -->
+                <!-- Tarjeta del Mapa Interactivo -->
+                <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 space-y-4">
                     <div class="flex flex-wrap items-center justify-between gap-2">
-                        <!-- Layer Style Switcher -->
-                        <div class="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-300 text-xs font-bold">
-                            <button type="button" data-map-style="m" class="map-style-btn px-3 py-1.5 rounded-lg bg-blue-600 text-white font-extrabold shadow-sm">
-                                <i class="fa-brands fa-google mr-1"></i> Google Mapa
-                            </button>
-                            <button type="button" data-map-style="y" class="map-style-btn px-3 py-1.5 rounded-lg text-slate-700 hover:bg-slate-200">
-                                <i class="fa-solid fa-satellite mr-1"></i> Satélite Híbrido
-                            </button>
-                            <button type="button" data-map-style="p" class="map-style-btn px-3 py-1.5 rounded-lg text-slate-700 hover:bg-slate-200">
-                                <i class="fa-solid fa-mountain mr-1"></i> Relieve
-                            </button>
-                        </div>
-
-                        <!-- Zone Filter + Funcionario Tool -->
                         <div class="flex flex-wrap items-center gap-1.5">
-                            <button type="button" data-map-filter="all" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-900 text-white">Ver Todo</button>
-                            <button type="button" data-map-filter="safe" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-green-100 text-green-900 border border-green-300">Solo Zonas Seguras</button>
-                            <button type="button" data-map-filter="risk" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-red-100 text-red-900 border border-red-300">Solo Zonas Prohibidas</button>
-                            <button type="button" id="btnTogglePlotMode" class="px-3 py-1.5 rounded-xl text-xs font-extrabold bg-emerald-700 hover:bg-emerald-800 text-white">
-                                <i class="fa-solid fa-plus-circle mr-1"></i> Habilitar Nuevo Terreno
+                            <button type="button" onclick="filtrarCapasMapa('todo')" class="px-3 py-1.5 rounded-xl text-xs font-extrabold bg-slate-900 text-white">Ver Todo</button>
+                            <button type="button" onclick="filtrarCapasMapa('seguros')" class="px-3 py-1.5 rounded-xl text-xs font-extrabold bg-green-100 text-green-900 border border-green-300">
+                                <i class="fa-solid fa-circle-check text-green-600 mr-1"></i> 5 Zonas Verdes Seguras
                             </button>
+                            <button type="button" onclick="filtrarCapasMapa('riesgo')" class="px-3 py-1.5 rounded-xl text-xs font-extrabold bg-red-100 text-red-900 border border-red-300">
+                                <i class="fa-solid fa-ban text-red-600 mr-1"></i> 4 Zonas Rojas Prohibidas
+                            </button>
+                        </div>
+
+                        <!-- Selector de Capas Google Maps -->
+                        <div class="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-300 text-xs font-bold">
+                            <button type="button" id="btnCapa-calle" onclick="cambiarEstiloMapa('calle')" class="px-3 py-1.5 rounded-lg bg-blue-600 text-white font-extrabold">Google Calles</button>
+                            <button type="button" id="btnCapa-satelite" onclick="cambiarEstiloMapa('satelite')" class="px-3 py-1.5 rounded-lg text-slate-700 hover:bg-white">Satélite Híbrido</button>
+                            <button type="button" id="btnCapa-relieve" onclick="cambiarEstiloMapa('relieve')" class="px-3 py-1.5 rounded-lg text-slate-700 hover:bg-white">Relieve</button>
                         </div>
                     </div>
 
-                    <!-- Quick Jump Buttons to Huaraz Safe Plateaus -->
-                    <div class="flex flex-wrap items-center gap-1.5 text-xs pt-1">
-                        <span class="font-extrabold text-slate-600 mr-1"><i class="fa-solid fa-compass text-muniBlue mr-1"></i>Ir a Terraza Segura:</span>
-                        <button type="button" data-jump-zone="0" class="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold border border-emerald-300">1. Terraza Alta Pongor</button>
-                        <button type="button" data-jump-zone="1" class="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold border border-emerald-300">2. Challhua Alto / Urpay</button>
-                        <button type="button" data-jump-zone="2" class="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold border border-emerald-300">3. Meseta Tacllán Este</button>
-                        <button type="button" data-jump-zone="3" class="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold border border-emerald-300">4. Paria - Wilcahuain</button>
-                        <button type="button" data-jump-zone="4" class="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold border border-emerald-300">5. Toclla - Macashca</button>
-                        <button type="button" id="btnResetMap" class="px-2.5 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold">Vista General Huaraz</button>
+                    <!-- Botones de salto rápido a las Terrazas Seguras -->
+                    <div class="flex flex-wrap items-center gap-1.5 text-xs">
+                        <span class="font-extrabold text-slate-600">Ir a Terraza Alta Segura:</span>
+                        <button type="button" onclick="enfocarSector(0)" class="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold border border-emerald-300">1. Pongor Alto</button>
+                        <button type="button" onclick="enfocarSector(1)" class="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold border border-emerald-300">2. Challhua Alto / Urpay</button>
+                        <button type="button" onclick="enfocarSector(2)" class="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold border border-emerald-300">3. Meseta Tacllán Este</button>
+                        <button type="button" onclick="enfocarSector(3)" class="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold border border-emerald-300">4. Paria - Wilcahuain</button>
+                        <button type="button" onclick="enfocarSector(4)" class="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold border border-emerald-300">5. Toclla - Macashca</button>
                     </div>
 
-                    <!-- Funcionario Plot Mode Banner -->
-                    <div id="plotModeBanner" class="hidden bg-emerald-900 text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center justify-between">
-                        <span><i class="fa-solid fa-hand-pointer text-amber-300 mr-1.5"></i> MODO CATASTRO ACTIVO: Toque cualquier planicie libre en el mapa para crear un nuevo polígono verde de lotes seguros.</span>
-                        <button type="button" id="btnCancelPlotMode" class="bg-white text-emerald-950 px-2.5 py-1 rounded-lg font-black">Cancelar</button>
-                    </div>
-
-                    <!-- THE LEAFLET MAP CONTAINER -->
-                    <div class="relative rounded-xl overflow-hidden border-2 border-slate-300">
+                    <!-- Contenedor del Mapa con Altura Fija Garantizada -->
+                    <div class="border-2 border-slate-300 rounded-xl overflow-hidden relative">
                         <div id="mapa-huaraz"></div>
                     </div>
 
-                    <!-- Legend -->
-                    <div class="flex flex-wrap items-center justify-between gap-3 pt-1 text-xs">
-                        <div class="flex flex-wrap items-center gap-4">
-                            <span class="flex items-center gap-1.5 font-bold text-slate-800">
-                                <span class="w-3.5 h-3.5 rounded bg-emerald-500 border border-emerald-800 inline-block"></span>
-                                Polígono Verde: Mesetas y Terrazas Firmes (+480m lejos del río • Con Título SUNARP)
-                            </span>
-                            <span class="flex items-center gap-1.5 font-bold text-red-700">
-                                <span class="w-3.5 h-3.5 rounded bg-red-500 border border-red-800 inline-block"></span>
-                                Polígono Rojo: Cauce Río Santa, Río Quilcay y Laderas Inestables (PROHIBIDO CONSTRUIR)
-                            </span>
+                    <!-- Leyenda Clara -->
+                    <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs">
+                        <div class="flex items-center gap-2 font-bold text-slate-800">
+                            <span class="w-4 h-4 rounded bg-emerald-500 border-2 border-emerald-800 inline-block"></span>
+                            <span>ZONA VERDE: Planicies y Terrazas Altas (+500m lejos del río • Con Título SUNARP)</span>
+                        </div>
+                        <div class="flex items-center gap-2 font-bold text-red-700">
+                            <span class="w-4 h-4 rounded bg-red-500 border-2 border-red-800 inline-block"></span>
+                            <span>ZONA ROJA: Cauce Río Santa, Río Quilcay, Rataquenua y Quebradas (PROHIBIDO CONSTRUIR)</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- INTERACTIVE BLOCK & LOT SUBDIVISIONS PLAN (MANZANAS A, B, C) -->
+                <!-- PLANO INTERACTIVO DE MANZANEO (MZ A, B y C) -->
                 <div class="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border-2 border-emerald-600/30 space-y-4">
                     <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-200 pb-3">
                         <div>
-                            <span class="bg-green-100 text-muniGreen text-xs font-extrabold px-2.5 py-0.5 rounded-full uppercase">Plano Interactivo de Lotización</span>
-                            <h3 class="text-lg sm:text-xl font-extrabold text-slate-900 mt-1">
-                                <i class="fa-solid fa-table-cells text-muniGreen mr-1"></i>
-                                Elija su Lote Disponible por Manzana (Manzanas A, B y C)
-                            </h3>
+                            <span class="bg-green-100 text-muniGreen text-xs font-extrabold px-2.5 py-0.5 rounded-full uppercase">Lotización Municipal en Tierra Firme</span>
+                            <h3 class="text-lg sm:text-xl font-extrabold text-slate-900 mt-1">Plano Interactivo de Manzaneo (Manzanas A, B y C)</h3>
                         </div>
-                        <select id="selectSubdivisionZone" class="border-2 border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm font-extrabold text-slate-900 bg-slate-50">
-                            <option value="0">1. Terraza Alta Pongor (S/ 18,500 • 120 m²)</option>
-                            <option value="1">2. Planicie Challhua Alto / Urpay (S/ 21,000 • 120 m²)</option>
-                            <option value="2">3. Meseta Segura Tacllán Este (S/ 19,800 • 120 m²)</option>
-                            <option value="3">4. Terrazas de Paria - Wilcahuain (S/ 22,500 • 140 m²)</option>
-                            <option value="4">5. Planicie Toclla - Macashca (S/ 17,200 • 120 m²)</option>
+                        <select id="selectSectorPlano" onchange="renderizarPlanoManzanas()" class="border-2 border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm font-extrabold text-slate-900 bg-slate-50">
+                            <option value="0">Sector 1: Terraza Alta Pongor (S/ 24,500)</option>
+                            <option value="1">Sector 2: Planicie Challhua Alto / Urpay (S/ 23,200)</option>
+                            <option value="2">Sector 3: Meseta Tacllán Este (S/ 22,000)</option>
+                            <option value="3">Sector 4: Terrazas de Paria - Wilcahuain (S/ 25,800)</option>
+                            <option value="4">Sector 5: Planicie Toclla - Macashca (S/ 19,500)</option>
                         </select>
                     </div>
 
                     <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
                         <div class="lg:col-span-8 bg-slate-100 p-4 rounded-2xl border border-slate-300 space-y-3">
-                            <div class="text-center text-[11px] font-black uppercase tracking-wider bg-slate-300 text-slate-800 py-1.5 rounded">
-                                🛣️ VÍA ARTERIAL MUNICIPAL HABILITADA (RED DE AGUA EPS CHAVÍN Y LUZ HIDRANDINA)
+                            <div class="text-center text-xs font-extrabold uppercase bg-slate-300 text-slate-800 py-1.5 rounded">
+                                🛣️ VÍA PRINCIPAL HABILITADA CON AGUA EPS CHAVÍN Y LUZ HIDRANDINA
                             </div>
-                            <div id="lotsGridContainer" class="grid grid-cols-2 sm:grid-cols-4 gap-2.5"></div>
-                            <div class="bg-emerald-100 border border-emerald-400 text-emerald-950 rounded-xl py-2 px-3 text-center text-xs font-extrabold">
-                                🌳 PARQUE ZONAL SEGURO + LOCAL COMUNAL Y ÁREA DE EVACUACIÓN
+                            <div id="grillaLotesManzana" class="grid grid-cols-2 sm:grid-cols-4 gap-2.5"></div>
+                            <div class="bg-emerald-100 border border-emerald-400 text-emerald-900 rounded-xl py-2 px-3 text-center text-xs font-extrabold">
+                                🌳 PARQUE ZONAL MUNICIPAL Y LOCAL COMUNAL SEGURO
                             </div>
                         </div>
 
-                        <!-- Selected Lot Detail Panel -->
-                        <div class="lg:col-span-4 bg-slate-900 text-white rounded-2xl p-5 shadow-lg space-y-3">
-                            <div class="flex items-center justify-between">
-                                <span id="detailLotBadge" class="bg-emerald-500 text-slate-950 text-xs font-black px-2.5 py-0.5 rounded uppercase">LOTE LIBRE</span>
-                                <span id="detailLotSunarp" class="text-xs text-slate-400 font-mono">SUNARP #11094821</span>
-                            </div>
-                            <h4 id="detailLotTitle" class="text-lg font-black text-white">Terraza Alta Pongor • Mz. A - Lote 02</h4>
-                            <div class="text-xs text-slate-300 space-y-1.5 bg-slate-800 p-3 rounded-xl border border-slate-700">
-                                <div class="flex justify-between"><span>Área y Medidas:</span><strong id="detailLotArea" class="text-white">120 m² (8m x 15m)</strong></div>
-                                <div class="flex justify-between"><span>Seguridad Física:</span><strong class="text-emerald-400">Terraza Alta Firme</strong></div>
-                                <div class="flex justify-between"><span>Servicios:</span><strong class="text-amber-300">Agua, Desagüe y Luz</strong></div>
+                        <div class="lg:col-span-4 bg-slate-900 text-white rounded-2xl p-5 space-y-3">
+                            <span class="bg-emerald-500 text-slate-950 text-xs font-black px-2.5 py-0.5 rounded uppercase">Lote Seleccionado</span>
+                            <h4 id="detalleLoteTitulo" class="text-lg font-black">Terraza Alta Pongor • Mz. A - Lote 02</h4>
+                            <div class="text-xs text-slate-300 space-y-1 bg-slate-800 p-3 rounded-xl">
+                                <div class="flex justify-between"><span>Área:</span><strong class="text-white">120 m² (8m x 15m)</strong></div>
+                                <div class="flex justify-between"><span>Seguridad:</span><strong class="text-emerald-400">Fuera de Faja Marginal</strong></div>
+                                <div class="flex justify-between"><span>Registro:</span><strong id="detalleLoteSunarp" class="text-amber-300">P.E. 11094821 SUNARP</strong></div>
                             </div>
                             <div>
-                                <div class="text-xs text-slate-400 uppercase font-bold">Precio Social Municipal</div>
-                                <div id="detailLotPrice" class="text-3xl font-black text-amber-400">S/ 18,500</div>
-                                <div id="detailLotMonthly" class="text-xs text-blue-200 font-semibold">o desde S/ 195 / mes con Bono Techo Propio</div>
+                                <div class="text-xs text-slate-400 uppercase font-bold">Precio Social Total</div>
+                                <div id="detalleLotePrecio" class="text-3xl font-black text-amber-400">S/ 24,500</div>
                             </div>
-                            <div class="pt-2 space-y-2">
-                                <button type="button" id="btnReserveSelectedLot" class="btn-large w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 text-sm shadow">
-                                    <i class="fa-solid fa-file-signature mr-2"></i> Separar este Lote
-                                </button>
-                                <button type="button" id="btnSimulateSelectedLot" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-2.5 rounded-xl text-xs border border-slate-600">
-                                    <i class="fa-solid fa-calculator mr-1"></i> Calcular Cuota Mensual
-                                </button>
-                            </div>
+                            <button type="button" onclick="separarLoteActual()" class="btn-touch w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 text-xs sm:text-sm shadow">
+                                <i class="fa-solid fa-file-signature mr-2"></i> Separar este Lote en Línea
+                            </button>
+                            <button type="button" onclick="simularLoteActual()" class="btn-touch w-full bg-slate-800 hover:bg-slate-700 text-white py-2 text-xs border border-slate-600">
+                                <i class="fa-solid fa-calculator mr-2"></i> Calcular Cuota Mensual
+                            </button>
                         </div>
                     </div>
                 </div>
 
-                <!-- Zone Cards List -->
-                <div class="space-y-3">
-                    <h3 class="text-lg font-extrabold text-slate-900">Catálogo de las 5 Zonas de Expansión Segura en Huaraz</h3>
-                    <div id="zonesCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
-                </div>
+                <!-- Tarjetas Resumen del Catálogo -->
+                <div id="catalogoTarjetas" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
             </section>
 
-            <!-- TAB 2: TRÁMITE EN LÍNEA (< 30 DÍAS) -->
-            <section id="tab-tramite" class="tab-section hidden space-y-6">
+            <!-- PESTAÑA 2: TRÁMITE EN LÍNEA (< 30 DÍAS) -->
+            <section id="sec-tramite" class="hidden space-y-6">
                 <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-4">
                     <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-3">
                         <div>
-                            <span class="bg-blue-100 text-muniBlue text-xs font-extrabold px-2.5 py-0.5 rounded-full uppercase">Resolución Garantizada en menos de 30 días</span>
+                            <span class="bg-blue-100 text-muniBlue text-xs font-extrabold px-2.5 py-1 rounded-full uppercase">Plazo Garantizado: Menos de 30 Días</span>
                             <h2 class="text-xl font-extrabold text-slate-900 mt-1">Seguimiento de Expediente #HZ-2026-0482</h2>
                         </div>
-                        <span id="fastTrackStatusPill" class="bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1 rounded-xl text-xs font-extrabold">
-                            Plazo actual: Día 12 de 30 (En evaluación técnica)
+                        <span id="badgeViaRapida" class="bg-amber-100 text-amber-900 text-xs font-extrabold px-3 py-1.5 rounded-xl border border-amber-300">
+                            ⏱️ Plazo actual: Día 12 de 30 (En Verificación Técnica)
                         </span>
                     </div>
 
-                    <!-- 4-Step Progress Tracker -->
-                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
                         <div class="p-3.5 rounded-xl border-2 border-green-500 bg-green-50">
-                            <div class="text-xs font-black text-green-700">PASO 1 • COMPLETADO</div>
-                            <div class="font-bold text-slate-900 mt-1 text-sm">Validación DNI / RENIEC</div>
-                            <p class="text-xs text-slate-600 mt-0.5">Sin otra propiedad en SUNARP.</p>
+                            <div class="font-extrabold text-green-700">PASO 1 • COMPLETADO</div>
+                            <div class="font-bold text-slate-900 text-sm mt-1">Validación DNI</div>
+                            <p class="text-slate-600 mt-0.5">Identidad verificada en RENIEC.</p>
                         </div>
                         <div class="p-3.5 rounded-xl border-2 border-green-500 bg-green-50">
-                            <div class="text-xs font-black text-green-700">PASO 2 • COMPLETADO</div>
-                            <div class="font-bold text-slate-900 mt-1 text-sm">Evaluación Social</div>
-                            <p class="text-xs text-slate-600 mt-0.5">Prioridad familiar aprobada.</p>
+                            <div class="font-extrabold text-green-700">PASO 2 • COMPLETADO</div>
+                            <div class="font-bold text-slate-900 text-sm mt-1">Filtro SUNARP</div>
+                            <p class="text-slate-600 mt-0.5">Familia sin otra vivienda en Huaraz.</p>
                         </div>
                         <div class="p-3.5 rounded-xl border-2 border-blue-600 bg-blue-50">
-                            <div class="text-xs font-black text-blue-700">PASO 3 • EN CURSO</div>
-                            <div class="font-bold text-slate-900 mt-1 text-sm">Certificación de Lote</div>
-                            <p class="text-xs text-slate-600 mt-0.5">Visación Catastro e INDECI.</p>
+                            <div class="font-extrabold text-blue-700">PASO 3 • EN PROCESO</div>
+                            <div class="font-bold text-slate-900 text-sm mt-1">Asignación de Lote</div>
+                            <p class="text-slate-600 mt-0.5">Revisión técnica de lote seguro.</p>
                         </div>
                         <div class="p-3.5 rounded-xl border-2 border-slate-200 bg-slate-50">
-                            <div class="text-xs font-black text-slate-500">PASO 4 • PENDIENTE</div>
-                            <div class="font-bold text-slate-800 mt-1 text-sm">Título Adjudicado</div>
-                            <p class="text-xs text-slate-500 mt-0.5">Entrega en menos de 30 días.</p>
+                            <div class="font-extrabold text-slate-500">PASO 4 • PENDIENTE</div>
+                            <div class="font-bold text-slate-800 text-sm mt-1">Título Municipal</div>
+                            <p class="text-slate-500 mt-0.5">Entrega en menos de 30 días.</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Form -->
+                <!-- Formulario de Solicitud -->
                 <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200">
-                    <h3 class="text-lg font-extrabold text-slate-900 mb-4">Registrar Solicitud de Lote Seguro</h3>
-                    <form id="formTramite" class="space-y-4">
+                    <h3 class="text-lg font-extrabold text-slate-900 mb-3">Registrar Solicitud de Lote Seguro y Subir Documentos</h3>
+                    <form onsubmit="enviarTramite(event)" class="space-y-4">
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
-                                <label class="block text-xs font-bold uppercase text-slate-700 mb-1">DNI del Solicitante</label>
-                                <div class="flex gap-2">
-                                    <input type="text" id="inputTramiteDni" maxlength="8" value="31654892" required class="w-full border-2 border-slate-300 rounded-xl px-3 py-2.5 font-bold">
-                                    <button type="button" id="btnLookupDni" class="bg-muniBlue text-white px-3 py-2 rounded-xl text-xs font-bold shrink-0">Validar DNI</button>
-                                </div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">DNI del Solicitante</label>
+                                <input type="text" id="inputTramiteDni" maxlength="8" value="31654892" required class="w-full border-2 border-slate-300 rounded-xl px-3 py-2.5 font-bold">
                             </div>
                             <div>
-                                <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Nombre Completo</label>
-                                <input type="text" id="inputTramiteNombre" value="Juan Carlos Rimac Cochachin" required class="w-full bg-slate-100 border-2 border-slate-300 rounded-xl px-3 py-2.5 font-semibold">
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Nombres y Apellidos</label>
+                                <input type="text" id="inputTramiteNombre" value="Juan Carlos Rimac Cochachin" required class="w-full border-2 border-slate-300 rounded-xl px-3 py-2.5 font-bold">
                             </div>
                             <div>
-                                <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Celular para Alertas SMS</label>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Celular para Alertas SMS</label>
                                 <input type="tel" id="inputTramiteCel" value="943812904" required class="w-full border-2 border-slate-300 rounded-xl px-3 py-2.5 font-bold">
                             </div>
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Lote y Sector Seleccionado</label>
-                                <select id="selectTramiteLote" class="w-full border-2 border-slate-300 rounded-xl px-3 py-2.5 font-bold bg-white">
-                                    <option value="Terraza Alta Pongor - Mz. A Lote 02 (S/ 18,500)">Terraza Alta Pongor - Mz. A Lote 02 (S/ 18,500)</option>
-                                    <option value="Planicie Challhua Alto / Urpay - Mz. B Lote 05 (S/ 21,000)">Planicie Challhua Alto / Urpay - Mz. B Lote 05 (S/ 21,000)</option>
-                                    <option value="Meseta Segura Tacllán Este - Mz. A Lote 03 (S/ 19,800)">Meseta Segura Tacllán Este - Mz. A Lote 03 (S/ 19,800)</option>
-                                    <option value="Terrazas de Paria - Wilcahuain - Mz. C Lote 09 (S/ 22,500)">Terrazas de Paria - Wilcahuain - Mz. C Lote 09 (S/ 22,500)</option>
-                                    <option value="Planicie Toclla - Macashca - Mz. B Lote 06 (S/ 17,200)">Planicie Toclla - Macashca - Mz. B Lote 06 (S/ 17,200)</option>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Lote Formal Solicitado</label>
+                                <select id="inputTramiteLote" class="w-full border-2 border-slate-300 rounded-xl px-3 py-2.5 font-bold bg-white">
+                                    <option value="Terraza Alta Pongor - Mz. A Lote 02 (S/ 24,500)">Terraza Alta Pongor - Mz. A Lote 02 (S/ 24,500)</option>
+                                    <option value="Planicie Challhua Alto / Urpay - Mz. B Lote 05 (S/ 23,200)">Planicie Challhua Alto / Urpay - Mz. B Lote 05 (S/ 23,200)</option>
+                                    <option value="Meseta Tacllán Este - Mz. A Lote 03 (S/ 22,000)">Meseta Tacllán Este - Mz. A Lote 03 (S/ 22,000)</option>
+                                    <option value="Terrazas de Paria - Wilcahuain - Mz. C Lote 09 (S/ 25,800)">Terrazas de Paria - Wilcahuain - Mz. C Lote 09 (S/ 25,800)</option>
+                                    <option value="Planicie Toclla - Macashca - Mz. B Lote 06 (S/ 19,500)">Planicie Toclla - Macashca - Mz. B Lote 06 (S/ 19,500)</option>
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Situación Actual de Vivienda</label>
-                                <select class="w-full border-2 border-slate-300 rounded-xl px-3 py-2.5 font-bold bg-white">
-                                    <option>Reubicación prioritaria desde zona de riesgo / quebrada</option>
-                                    <option>Familia en vivienda alquilada sin terreno propio</option>
-                                </select>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Subir Fotos de Documentos (DNI y Declaración Jurada)</label>
+                                <input type="file" multiple class="w-full border-2 border-dashed border-slate-300 rounded-xl px-3 py-2 text-xs bg-slate-50">
                             </div>
                         </div>
 
-                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-bold">
-                            <label class="flex items-center gap-2"><input type="checkbox" checked class="w-4 h-4 accent-muniGreen"> Copia de DNI vigente</label>
-                            <label class="flex items-center gap-2"><input type="checkbox" checked class="w-4 h-4 accent-muniGreen"> Declaración Jurada de no poseer lote</label>
-                            <label class="flex items-center gap-2"><input type="checkbox" checked class="w-4 h-4 accent-muniGreen"> Autorización Ley N° 29733 (Datos Personales)</label>
-                        </div>
+                        <label class="flex items-start gap-2 text-xs text-slate-700 cursor-pointer">
+                            <input type="checkbox" required checked class="mt-0.5 accent-blue-900">
+                            <span>Autorizo el uso de mis datos conforme a la <strong>Ley N° 29733 (Ley de Protección de Datos Personales)</strong> y la recepción de SMS preventivos de la Municipalidad Provincial de Huaraz.</span>
+                        </label>
 
-                        <button type="submit" class="btn-large bg-muniGreen hover:bg-green-800 text-white px-6 py-3 text-sm shadow">
-                            <i class="fa-solid fa-paper-plane mr-2"></i> Enviar Expediente Municipal (&lt; 30 días)
+                        <button type="submit" class="btn-touch bg-muniGreen hover:bg-green-800 text-white px-6 py-3 text-sm shadow">
+                            <i class="fa-solid fa-paper-plane mr-2"></i> Registrar Expediente en Línea
                         </button>
                     </form>
                 </div>
             </section>
 
-            <!-- TAB 3: SIMULADOR DE FINANCIAMIENTO -->
-            <section id="tab-simulador" class="tab-section hidden space-y-6">
-                <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200">
-                    <h2 class="text-xl font-extrabold text-slate-900">Simulador de Financiamiento (Techo Propio y Bancos Aliados)</h2>
-                    <div class="mt-5 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-                        <div class="lg:col-span-7 space-y-4">
+            <!-- PESTAÑA 3: SIMULADOR DE FINANCIAMIENTO -->
+            <section id="sec-simulador" class="hidden space-y-6">
+                <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                    <div class="lg:col-span-7 space-y-4">
+                        <h2 class="text-xl font-extrabold text-slate-900">Simulador de Financiamiento con Bancos Aliados</h2>
+                        <div>
+                            <div class="flex justify-between text-sm font-bold mb-1">
+                                <span>Precio del Lote Seguro:</span>
+                                <span id="lblSimPrecio" class="text-muniBlue font-extrabold">S/ 24,500</span>
+                            </div>
+                            <input type="range" id="rngSimPrecio" min="16000" max="36000" step="500" value="24500" oninput="calcularCuota()" class="w-full h-3 bg-slate-200 rounded-lg accent-blue-900">
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-sm font-bold mb-1">
+                                <span>Cuota Inicial Ahorrada:</span>
+                                <span id="lblSimInicial" class="text-emerald-700 font-extrabold">S/ 2,500</span>
+                            </div>
+                            <input type="range" id="rngSimInicial" min="1000" max="12000" step="500" value="2500" oninput="calcularCuota()" class="w-full h-3 bg-slate-200 rounded-lg accent-emerald-600">
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
-                                <div class="flex justify-between text-sm font-bold mb-1">
-                                    <span>Precio del Lote Seleccionado:</span>
-                                    <span id="lblSimPrice" class="text-muniBlue font-extrabold">S/ 18,500</span>
-                                </div>
-                                <input type="range" id="rngSimPrice" min="15000" max="30000" step="500" value="18500" class="w-full accent-muniBlue">
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Entidad Financiera Aliada</label>
+                                <select id="selSimBanco" onchange="calcularCuota()" class="w-full border-2 border-slate-300 rounded-xl px-3 py-2.5 text-xs font-bold bg-white">
+                                    <option value="0.085">Caja del Santa (TEA Preferencial 8.5%)</option>
+                                    <option value="0.079">Banco de la Nación Social (TEA 7.9%)</option>
+                                    <option value="0.094">Mibanco Huaraz (TEA 9.4%)</option>
+                                </select>
                             </div>
                             <div>
-                                <div class="flex justify-between text-sm font-bold mb-1">
-                                    <span>Cuota Inicial Ahorrada:</span>
-                                    <span id="lblSimInitial" class="text-emerald-700 font-extrabold">S/ 2,000</span>
-                                </div>
-                                <input type="range" id="rngSimInitial" min="1000" max="10000" step="500" value="2000" class="w-full accent-emerald-600">
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Plazo de Pago</label>
+                                <select id="selSimAnios" onchange="calcularCuota()" class="w-full border-2 border-slate-300 rounded-xl px-3 py-2.5 text-xs font-bold bg-white">
+                                    <option value="5">5 años (60 meses)</option>
+                                    <option value="7" selected>7 años (84 meses)</option>
+                                    <option value="10">10 años (120 meses)</option>
+                                </select>
                             </div>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div>
-                                    <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Entidad Aliada</label>
-                                    <select id="selSimBank" class="w-full border-2 border-slate-300 rounded-xl px-3 py-2.5 text-sm font-bold bg-white">
-                                        <option value="0.085">Caja del Santa / Huaraz (TEA 8.5%)</option>
-                                        <option value="0.078">Banco de la Nación Social (TEA 7.8%)</option>
-                                        <option value="0.089">Fondo MiVivienda (TEA 8.9%)</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Plazo de Pago</label>
-                                    <select id="selSimYears" class="w-full border-2 border-slate-300 rounded-xl px-3 py-2.5 text-sm font-bold bg-white">
-                                        <option value="5">5 años (60 meses)</option>
-                                        <option value="7" selected>7 años (84 meses)</option>
-                                        <option value="10">10 años (120 meses)</option>
-                                    </select>
-                                </div>
+                        </div>
+                        <label class="flex items-center gap-2 bg-emerald-50 border border-emerald-300 p-3 rounded-xl text-xs font-bold text-emerald-950 cursor-pointer">
+                            <input type="checkbox" id="chkSimBono" checked onchange="calcularCuota()" class="w-4 h-4 accent-emerald-700">
+                            <span>Aplicar Bono Familiar / Descuento Social Municipal (- S/ 6,000)</span>
+                        </label>
+                    </div>
+
+                    <div class="lg:col-span-5 bg-slate-900 text-white rounded-2xl p-6 text-center space-y-3">
+                        <span class="bg-amber-400 text-slate-950 text-xs font-black px-3 py-1 rounded-full uppercase">Cuota Estimada</span>
+                        <div id="txtCuotaMensual" class="text-4xl font-black text-white">S/ 254 / mes</div>
+                        <div id="txtMontoFinanciado" class="text-xs text-blue-200">Monto a financiar: S/ 16,000</div>
+                        <button type="button" onclick="cambiarPestana('tramite')" class="btn-touch w-full bg-muniGreen hover:bg-green-600 text-white py-3 text-sm">
+                            Solicitar Lote con este Plan
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PESTAÑA 4: PUNTOS HUARAZ (VOLUNTARIADO Y RECOMPENSAS) -->
+            <section id="sec-puntos" class="hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <div class="bg-amber-500 text-slate-950 rounded-2xl p-6 shadow flex flex-col justify-between">
+                        <div>
+                            <span class="bg-slate-950 text-amber-400 text-xs font-extrabold px-2.5 py-1 rounded uppercase">Voluntariado Vecinal</span>
+                            <h2 class="text-2xl font-black mt-2">Mis Puntos Huaraz</h2>
+                        </div>
+                        <div id="txtPuntosUsuario" class="text-5xl font-black my-4">650 pts</div>
+                        <p class="text-xs font-bold">Gane puntos en faenas de prevención y canjéelos por beneficios directos.</p>
+                    </div>
+
+                    <div class="lg:col-span-2 bg-white rounded-2xl p-5 border border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="border-2 border-emerald-500 bg-emerald-50/40 rounded-xl p-4 flex flex-col justify-between">
+                            <div>
+                                <span class="bg-emerald-600 text-white text-xs font-extrabold px-2 py-0.5 rounded">500 PUNTOS</span>
+                                <h4 class="font-extrabold text-slate-900 mt-2">20% de Descuento en Arbitrios</h4>
+                                <p class="text-xs text-slate-600 mt-1">Descuento directo en arbitrios municipales de Huaraz 2026.</p>
                             </div>
-                            <label class="flex items-center gap-3 bg-emerald-50 border border-emerald-300 p-3 rounded-xl cursor-pointer">
-                                <input type="checkbox" id="chkSimBono" checked class="w-5 h-5 accent-emerald-700">
-                                <span class="text-xs sm:text-sm font-bold text-emerald-950">Aplicar Bono Municipal / Techo Propio (- S/ 5,000 de descuento directo)</span>
-                            </label>
+                            <button type="button" onclick="canjearPuntos(500, '20% de Descuento en Arbitrios')" class="btn-touch mt-3 w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs py-2.5">
+                                Canjear por 500 pts
+                            </button>
                         </div>
 
-                        <div class="lg:col-span-5 bg-slate-900 text-white rounded-2xl p-6 text-center space-y-3">
-                            <span class="bg-amber-400 text-slate-950 text-xs font-black px-3 py-1 rounded-full uppercase">Cuota Mensual Estimada</span>
-                            <div id="lblSimMonthly" class="text-4xl font-black text-white">S/ 182 / mes</div>
-                            <p class="text-xs text-slate-300">Monto financiado neto: <strong id="lblSimPrincipal">S/ 11,500</strong></p>
-                            <button type="button" data-goto-tab="tramite" class="btn-large w-full bg-muniGreen hover:bg-green-600 text-white py-3 text-sm">
-                                Solicitar Lote con este Plan
+                        <div class="border-2 border-amber-500 bg-amber-50/40 rounded-xl p-4 flex flex-col justify-between">
+                            <div>
+                                <span class="bg-amber-500 text-slate-950 text-xs font-extrabold px-2 py-0.5 rounded">1,000 PUNTOS</span>
+                                <h4 class="font-extrabold text-slate-900 mt-2">Vía Rápida en Trámite (&lt; 15 días)</h4>
+                                <p class="text-xs text-slate-600 mt-1">Prioridad en evaluación y adjudicación de lote formal.</p>
+                            </div>
+                            <button type="button" onclick="canjearPuntos(1000, 'Vía Rápida en Trámite (< 15 días)')" class="btn-touch mt-3 w-full bg-slate-900 hover:bg-slate-800 text-white text-xs py-2.5">
+                                Canjear por 1,000 pts
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl p-5 border border-slate-200">
+                    <h3 class="font-extrabold text-slate-900 mb-3">Registrar Participación en Faenas Comunales (Sumar Puntos)</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between">
+                            <div>
+                                <span class="font-extrabold text-green-700">+200 PTS</span>
+                                <h4 class="font-bold text-slate-900 text-sm mt-1">Reforestación con Quenuales en Rataquenua</h4>
+                            </div>
+                            <button type="button" onclick="sumarPuntos(200, 'Reforestación Rataquenua')" class="mt-3 bg-muniGreen text-white font-bold py-2 rounded-lg">
+                                + Sumar 200 pts
+                            </button>
+                        </div>
+                        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between">
+                            <div>
+                                <span class="font-extrabold text-green-700">+250 PTS</span>
+                                <h4 class="font-bold text-slate-900 text-sm mt-1">Limpieza de Faja Marginal del Río Quilcay</h4>
+                            </div>
+                            <button type="button" onclick="sumarPuntos(250, 'Limpieza Río Quilcay')" class="mt-3 bg-muniGreen text-white font-bold py-2 rounded-lg">
+                                + Sumar 250 pts
+                            </button>
+                        </div>
+                        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between">
+                            <div>
+                                <span class="font-extrabold text-green-700">+150 PTS</span>
+                                <h4 class="font-bold text-slate-900 text-sm mt-1">Brigada Vecinal de Simulacro CODISEC</h4>
+                            </div>
+                            <button type="button" onclick="sumarPuntos(150, 'Brigada CODISEC')" class="mt-3 bg-muniGreen text-white font-bold py-2 rounded-lg">
+                                + Sumar 150 pts
                             </button>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <!-- TAB 4: PUNTOS HUARAZ -->
-            <section id="tab-puntos" class="tab-section hidden space-y-6">
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
-                    <div class="bg-amber-500 text-slate-950 rounded-2xl p-6 shadow space-y-3">
-                        <span class="bg-slate-950 text-amber-400 text-xs font-extrabold px-2.5 py-1 rounded-full uppercase">Voluntariado Vecinal</span>
-                        <h2 class="text-2xl font-black">Mis Puntos Huaraz</h2>
-                        <div id="lblUserPoints" class="text-5xl font-black">650 pts</div>
-                        <p class="text-xs font-bold">Participe en faenas de reforestación y limpieza de cauces para canjear beneficios.</p>
-                    </div>
-                    <div class="lg:col-span-2 bg-white rounded-2xl p-5 border border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div class="border-2 border-emerald-500 bg-emerald-50/40 rounded-xl p-4 flex flex-col justify-between">
-                            <div>
-                                <span class="bg-emerald-600 text-white text-xs font-extrabold px-2 py-0.5 rounded">500 PUNTOS</span>
-                                <h4 class="font-extrabold text-slate-900 mt-2">20% Descuento en Arbitrios</h4>
-                                <p class="text-xs text-slate-600 mt-1">Descuento directo en arbitrios municipales 2026.</p>
-                            </div>
-                            <button type="button" data-redeem="500" class="mt-4 btn-large bg-emerald-600 hover:bg-emerald-700 text-white text-xs py-2.5">Canjear con 500 pts</button>
+            <!-- PESTAÑA 5: DENUNCIA ANÓNIMA DE TRÁFICO DE TERRENOS -->
+            <section id="sec-denuncias" class="hidden space-y-6">
+                <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border-2 border-red-200 space-y-4">
+                    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-3">
+                        <div>
+                            <span class="bg-red-100 text-red-800 text-xs font-extrabold px-2.5 py-1 rounded-full uppercase">Procuraduría Municipal y Fiscalía</span>
+                            <h2 class="text-xl font-extrabold text-slate-900 mt-1">Denuncia de Tráfico de Terrenos e Invasiones</h2>
                         </div>
-                        <div class="border-2 border-amber-500 bg-amber-50/40 rounded-xl p-4 flex flex-col justify-between">
-                            <div>
-                                <span class="bg-amber-500 text-slate-950 text-xs font-extrabold px-2 py-0.5 rounded">1,000 PUNTOS</span>
-                                <h4 class="font-extrabold text-slate-900 mt-2">Vía Rápida de Trámite (&lt; 15 días)</h4>
-                                <p class="text-xs text-slate-600 mt-1">Prioridad en adjudicación de lote formal.</p>
-                            </div>
-                            <button type="button" data-redeem="1000" class="mt-4 btn-large bg-slate-900 hover:bg-slate-800 text-white text-xs py-2.5">Activar con 1,000 pts</button>
-                        </div>
+                        <span class="bg-slate-900 text-white text-xs font-bold px-3 py-1.5 rounded-xl">🔒 Reserva de Identidad 100% Anónima</span>
                     </div>
-                </div>
 
-                <div class="bg-white rounded-2xl p-5 border border-slate-200">
-                    <h3 class="font-extrabold text-base text-slate-900 mb-3">Registrar Participación en Faenas Comunales (Demo)</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <button type="button" data-earn-pts="200" class="p-4 rounded-xl border-2 border-slate-200 hover:border-muniGreen text-left bg-slate-50">
-                            <span class="text-xs font-extrabold text-muniGreen">+200 PUNTOS</span>
-                            <div class="font-bold text-sm text-slate-900 mt-1">Plantación de Quenuales en Rataquenua</div>
-                        </button>
-                        <button type="button" data-earn-pts="250" class="p-4 rounded-xl border-2 border-slate-200 hover:border-muniGreen text-left bg-slate-50">
-                            <span class="text-xs font-extrabold text-muniGreen">+250 PUNTOS</span>
-                            <div class="font-bold text-sm text-slate-900 mt-1">Limpieza de Faja Marginal Río Quilcay</div>
-                        </button>
-                        <button type="button" data-earn-pts="150" class="p-4 rounded-xl border-2 border-slate-200 hover:border-muniGreen text-left bg-slate-50">
-                            <span class="text-xs font-extrabold text-muniGreen">+150 PUNTOS</span>
-                            <div class="font-bold text-sm text-slate-900 mt-1">Brigadista Simulacro CODISEC / INDECI</div>
-                        </button>
-                    </div>
-                </div>
-            </section>
-
-            <!-- TAB 5: DENUNCIA ANÓNIMA -->
-            <section id="tab-denuncias" class="tab-section hidden space-y-6">
-                <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border-2 border-red-200">
-                    <h2 class="text-xl font-extrabold text-slate-900">Denuncia Anónima de Tráfico de Terrenos e Invasiones</h2>
-                    <p class="text-xs sm:text-sm text-slate-600 mt-1">Su identidad está protegida. La alerta llega directo a Procuraduría Municipal y Fiscalía de Prevención del Delito.</p>
-                    <form id="formDenuncia" class="mt-4 space-y-4">
+                    <form onsubmit="enviarDenuncia(event)" class="space-y-4">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Zona Reportada</label>
-                                <select id="selDenunciaZona" class="w-full border-2 border-slate-300 rounded-xl px-3 py-2.5 text-sm font-bold bg-white">
-                                    <option value="Faja Marginal Río Quilcay / Cojup">Faja Marginal Río Quilcay / Ruta Cojup</option>
-                                    <option value="Cauce y Ribera del Río Santa">Cauce y Ribera del Río Santa</option>
-                                    <option value="Laderas Inestables Cerro Rataquenua">Laderas Inestables Cerro Rataquenua</option>
-                                    <option value="Quebrada Seca / Pedregal Alto">Quebrada Seca / Pedregal Alto</option>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Zona donde ocurre la invasión o venta ilegal</label>
+                                <select id="inputDenunciaZona" class="w-full border-2 border-slate-300 rounded-xl px-3 py-2.5 text-sm font-bold bg-white">
+                                    <option value="Faja Marginal Río Quilcay / Ruta Cojup">Faja Marginal Río Quilcay / Ruta Cojup</option>
+                                    <option value="Laderas del Cerro Rataquenua">Laderas del Cerro Rataquenua</option>
+                                    <option value="Ribera del Río Santa (Challhua / Tacllán)">Ribera del Río Santa (Challhua / Tacllán)</option>
+                                    <option value="Quebrada Pedregal Alto / Tajamar">Quebrada Pedregal Alto / Tajamar</option>
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Coordenadas GPS Referenciales</label>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Foto de Evidencia y Coordenada GPS</label>
                                 <div class="flex gap-2">
-                                    <input type="text" id="inputDenunciaGps" value="-9.5248, -77.5210 (Huaraz)" readonly class="w-full bg-slate-100 border-2 border-slate-300 rounded-xl px-3 py-2.5 text-xs font-bold">
-                                    <button type="button" id="btnCaptureGps" class="bg-slate-800 text-white px-3 py-2 rounded-xl text-xs font-bold shrink-0">Fijar GPS</button>
+                                    <input type="file" accept="image/*" class="w-full border border-slate-300 rounded-xl px-2 py-2 text-xs bg-slate-50">
+                                    <button type="button" onclick="fijarGpsDenuncia()" class="bg-slate-800 text-white text-xs font-bold px-3 py-2 rounded-xl shrink-0">
+                                        📍 GPS
+                                    </button>
                                 </div>
+                                <div id="txtGpsDenuncia" class="text-[11px] text-slate-500 mt-1">GPS: -9.5245, -77.5210 (Huaraz)</div>
                             </div>
                         </div>
                         <div>
-                            <label class="block text-xs font-bold uppercase text-slate-700 mb-1">Descripción de la Invasión o Venta Ilegal</label>
-                            <textarea id="txtDenunciaDetalle" rows="3" required placeholder="Indique si están lotizando con tiza, colocando esteras o vendiendo con constancias falsas..." class="w-full border-2 border-slate-300 rounded-xl p-3 text-sm"></textarea>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Descripción de los hechos (Anónimo si lo desea)</label>
+                            <textarea id="inputDenunciaDesc" rows="3" required placeholder="Indique si están marcando lotes con tiza, colocando esteras o vendiendo con constancias falsas..." class="w-full border-2 border-slate-300 rounded-xl p-3 text-sm"></textarea>
                         </div>
-                        <button type="submit" class="btn-large bg-red-600 hover:bg-red-700 text-white px-6 py-3 text-sm shadow">
-                            <i class="fa-solid fa-bullhorn mr-2"></i> Enviar Denuncia 100% Anónima
+                        <button type="submit" class="btn-touch bg-red-600 hover:bg-red-700 text-white px-6 py-3 text-sm shadow">
+                            <i class="fa-solid fa-bullhorn mr-2"></i> Enviar Alerta Geolocalizada
                         </button>
                     </form>
                 </div>
             </section>
 
-            <!-- TAB 6: CAPACITACIÓN Y CONDENAS REALES -->
-            <section id="tab-capacitacion" class="tab-section hidden space-y-6">
+            <!-- PESTAÑA 6: CAPACITACIÓN, SIMULACROS CODISEC/COPROSEC Y CONDENAS REALES -->
+            <section id="sec-capacitacion" class="hidden space-y-6">
                 <div class="bg-slate-900 text-white rounded-2xl p-5 sm:p-6 border-l-8 border-red-600 space-y-4">
                     <h2 class="text-xl font-extrabold">Casos Reales de Condenas por Tráfico de Terrenos (Código Penal Art. 202 y 310)</h2>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
                         <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
                             <span class="bg-red-600 text-white font-black px-2 py-0.5 rounded">8 AÑOS DE PRISIÓN EFECTIVA</span>
-                            <h4 class="font-bold text-sm mt-2">Lotización Ilegal en Río Quilcay</h4>
-                            <p class="text-slate-300 mt-1">Sentencia firme por usurpación agravada y estafa a 35 familias con certificados falsos en zona de aluvión.</p>
+                            <h4 class="font-bold text-sm mt-2">Caso Faja Marginal Río Quilcay</h4>
+                            <p class="text-slate-300 mt-1">Sentencia firme por estafa y usurpación agravada contra falsos dirigentes que vendieron lotes en ruta de aluvión.</p>
                         </div>
                         <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
                             <span class="bg-red-600 text-white font-black px-2 py-0.5 rounded">10 AÑOS DE PRISIÓN EFECTIVA</span>
-                            <h4 class="font-bold text-sm mt-2">Invasión en Laderas de Rataquenua</h4>
-                            <p class="text-slate-300 mt-1">Organización sentenciada por venta ilegal de áreas intangibles sin factibilidad de agua ni seguridad física.</p>
+                            <h4 class="font-bold text-sm mt-2">Caso Laderas de Rataquenua</h4>
+                            <p class="text-slate-300 mt-1">Condena en el Penal de Huaraz por falsificar constancias de posesión en taludes inestables declarados intangibles.</p>
                         </div>
                         <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
-                            <span class="bg-amber-400 text-slate-950 font-black px-2 py-0.5 rounded">SIMULACROS CODISEC / COPROSEC</span>
-                            <h4 class="font-bold text-sm mt-2">Charlas y Simulacros Mensuales</h4>
-                            <p class="text-slate-300 mt-1">Participe todos los sábados en la Plaza de Armas y gane +150 Puntos Huaraz verificando partidas en SUNARP.</p>
+                            <span class="bg-amber-400 text-slate-950 font-black px-2 py-0.5 rounded">CHARLAS COPROSEC / CODISEC</span>
+                            <h4 class="font-bold text-sm mt-2">Simulacros y Capacitación Vecinal</h4>
+                            <p class="text-slate-300 mt-1">Todos los sábados 9:00 AM en el Centro Cultural de Huaraz: Verificación gratuita de partidas SUNARP y prevención de aluviones.</p>
                         </div>
                     </div>
                 </div>
             </section>
         </div>
 
-        <!-- ========================================================== -->
-        <!-- FUNCIONARIO MUNICIPAL VIEW                                 -->
-        <!-- ========================================================== -->
-        <div id="view-funcionario" class="hidden space-y-6">
+        <!-- ======================================================= -->
+        <!-- VISTA 2: FUNCIONARIO MUNICIPAL                          -->
+        <!-- ======================================================= -->
+        <div id="vista-funcionario" class="hidden space-y-6">
             <div class="bg-white rounded-2xl p-5 border-l-8 border-muniBlue shadow-sm flex flex-wrap items-center justify-between gap-3">
                 <div>
-                    <span class="text-xs font-extrabold uppercase text-muniBlue">Subgerencia de Catastro y Formalización</span>
-                    <h2 class="text-xl font-extrabold text-slate-900">Panel de Gestión del Funcionario Municipal</h2>
+                    <span class="text-xs font-extrabold uppercase bg-blue-100 text-muniBlue px-2.5 py-1 rounded">Gestión Interna Municipal</span>
+                    <h2 class="text-xl font-extrabold text-slate-900 mt-1">Panel del Funcionario: Expedientes, Lotes y Denuncias</h2>
                 </div>
-                <button type="button" id="btnAddPointsFuncionario" class="bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold px-4 py-2 rounded-xl text-xs">
-                    + Asignar +100 Puntos de Voluntariado al Ciudadano Actual
+                <button type="button" onclick="habilitarNuevoTerrenoDemo()" class="btn-touch bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 text-xs shadow">
+                    <i class="fa-solid fa-plus-circle mr-1.5"></i> Habilitar Nuevo Lote Municipal
                 </button>
             </div>
 
-            <div class="bg-white rounded-2xl p-5 border border-slate-200 overflow-x-auto">
-                <h3 class="font-extrabold text-base mb-3">Expedientes en Curso (Meta &lt; 30 días)</h3>
-                <table class="w-full text-left text-xs sm:text-sm">
-                    <thead class="bg-slate-100 uppercase text-xs font-extrabold text-slate-700">
-                        <tr>
-                            <th class="p-3">Expediente</th>
-                            <th class="p-3">Ciudadano</th>
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 overflow-x-auto">
+                <h3 class="font-extrabold text-slate-900 mb-3">Expedientes en Trámite (Meta &lt; 30 días)</h3>
+                <table class="w-full text-left text-xs sm:text-sm border-collapse">
+                    <thead>
+                        <tr class="bg-slate-100 text-slate-700 uppercase text-xs font-extrabold">
+                            <th class="p-3">Código</th>
+                            <th class="p-3">Ciudadano / DNI</th>
                             <th class="p-3">Lote Solicitado</th>
                             <th class="p-3">Estado</th>
                             <th class="p-3">Acción</th>
                         </tr>
                     </thead>
-                    <tbody id="tbodyExpedientes" class="divide-y divide-slate-200"></tbody>
+                    <tbody id="tablaTramitesFuncionario" class="divide-y divide-slate-200"></tbody>
+                </table>
+            </div>
+
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 overflow-x-auto">
+                <h3 class="font-extrabold text-slate-900 mb-3">Denuncias de Tráfico de Terrenos</h3>
+                <table class="w-full text-left text-xs sm:text-sm border-collapse">
+                    <thead>
+                        <tr class="bg-red-50 text-red-900 uppercase text-xs font-extrabold">
+                            <th class="p-3">Código</th>
+                            <th class="p-3">Zona</th>
+                            <th class="p-3">Reporte</th>
+                            <th class="p-3">Estado</th>
+                            <th class="p-3">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaDenunciasFuncionario" class="divide-y divide-slate-200"></tbody>
                 </table>
             </div>
         </div>
 
-        <!-- ========================================================== -->
-        <!-- ADMINISTRADOR VIEW (KPIs & PHASES 1, 2, 3)                 -->
-        <!-- ========================================================== -->
-        <div id="view-admin" class="hidden space-y-6">
-            <div class="bg-slate-900 text-white rounded-2xl p-6 space-y-4">
-                <h2 class="text-xl font-extrabold">Tablero de Control Municipal (KPIs) y Fases del Proyecto</h2>
-                <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <!-- ======================================================= -->
+        <!-- VISTA 3: ADMINISTRADOR (KPIs Y FASES 1, 2 Y 3)          -->
+        <!-- ======================================================= -->
+        <div id="vista-admin" class="hidden space-y-6">
+            <div class="bg-slate-900 text-white rounded-2xl p-5 sm:p-6 shadow-md space-y-4">
+                <span class="bg-amber-400 text-slate-950 text-xs font-black px-2.5 py-1 rounded uppercase">Alcaldía y Gerencia Municipal de Huaraz</span>
+                <h2 class="text-xl sm:text-2xl font-extrabold">Panel de KPIs y Hoja de Ruta (Fases 1, 2 y 3)</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
-                        <div class="text-xs text-slate-400 uppercase font-bold">Lotes Formalizados</div>
-                        <div class="text-3xl font-black text-emerald-400 mt-1">184</div>
+                        <div class="text-xs text-slate-400 font-bold uppercase">Lotes Formalizados</div>
+                        <div id="kpiLotes" class="text-3xl font-black text-emerald-400 mt-1">184</div>
                     </div>
                     <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
-                        <div class="text-xs text-slate-400 uppercase font-bold">Tiempo Promedio Resolución</div>
+                        <div class="text-xs text-slate-400 font-bold uppercase">Tiempo Promedio Resolución</div>
                         <div class="text-3xl font-black text-amber-400 mt-1">21 días</div>
                     </div>
                     <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
-                        <div class="text-xs text-slate-400 uppercase font-bold">Denuncias Atendidas</div>
+                        <div class="text-xs text-slate-400 font-bold uppercase">Denuncias Atendidas</div>
                         <div id="kpiDenuncias" class="text-3xl font-black text-red-400 mt-1">39</div>
                     </div>
                     <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
-                        <div class="text-xs text-slate-400 uppercase font-bold">Usuarios Activos con DNI</div>
-                        <div class="text-3xl font-black text-blue-400 mt-1">1,420</div>
+                        <div class="text-xs text-slate-400 font-bold uppercase">Usuarios Activos / SMS</div>
+                        <div id="kpiSms" class="text-3xl font-black text-blue-400 mt-1">1,420</div>
                     </div>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                <div class="bg-white p-5 rounded-2xl border-2 border-emerald-500">
-                    <span class="bg-emerald-600 text-white font-extrabold px-2 py-0.5 rounded">FASE 1 • PILOTO (6 MESES)</span>
-                    <h4 class="font-extrabold text-base text-slate-900 mt-2">Trámite, Catálogo y Mapa de Riesgo</h4>
-                    <p class="text-slate-600 mt-1">100% operativo con polígonos seguros en terrazas altas y fajas marginales intangibles.</p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs sm:text-sm">
+                <div class="bg-white p-5 rounded-2xl border-2 border-green-500">
+                    <span class="bg-green-600 text-white text-xs font-extrabold px-2.5 py-1 rounded">FASE 1 (PILOTO 6 MESES)</span>
+                    <h4 class="font-extrabold text-slate-900 mt-2">Trámite, Catálogo y Mapa de Riesgo</h4>
+                    <p class="text-slate-600 mt-1">100% operativo: Lotes seguros georreferenciados, fajas marginales intangibles y expediente en menos de 30 días.</p>
                 </div>
                 <div class="bg-white p-5 rounded-2xl border-2 border-blue-600">
-                    <span class="bg-muniBlue text-white font-extrabold px-2 py-0.5 rounded">FASE 2 • EXPANSIÓN</span>
-                    <h4 class="font-extrabold text-base text-slate-900 mt-2">Puntos Huaraz y Alertas SMS</h4>
-                    <p class="text-slate-600 mt-1">Voluntariado vecinal (500 y 1,000 pts) y geocerca preventiva SMS al ingresar a quebradas.</p>
+                    <span class="bg-blue-700 text-white text-xs font-extrabold px-2.5 py-1 rounded">FASE 2 (MESES 7 A 12)</span>
+                    <h4 class="font-extrabold text-slate-900 mt-2">Puntos Huaraz y Alertas SMS</h4>
+                    <p class="text-slate-600 mt-1">Voluntariado comunitario (500 pts y 1,000 pts) y aviso automático por geocerca al ingresar a zonas prohibidas.</p>
                 </div>
                 <div class="bg-white p-5 rounded-2xl border-2 border-amber-500">
-                    <span class="bg-amber-500 text-slate-950 font-extrabold px-2 py-0.5 rounded">FASE 3 • CONSOLIDACIÓN</span>
-                    <h4 class="font-extrabold text-base text-slate-900 mt-2">KPIs y Convenios Bancarios</h4>
-                    <p class="text-slate-600 mt-1">Integración con Bono Techo Propio, Caja del Santa, Banco de la Nación y SUNARP.</p>
+                    <span class="bg-amber-500 text-slate-950 text-xs font-extrabold px-2.5 py-1 rounded">FASE 3 (CONSOLIDACIÓN)</span>
+                    <h4 class="font-extrabold text-slate-900 mt-2">KPIs Completos y Convenios Bancarios</h4>
+                    <p class="text-slate-600 mt-1">Integración de créditos preferenciales con bancos aliados y métricas interinstitucionales en tiempo real.</p>
                 </div>
             </div>
         </div>
+
     </main>
 
-    <!-- TOAST NOTIFICATION -->
-    <div id="toastBox" class="hidden fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-2xl border-l-8 border-muniGreen max-w-sm">
-        <div id="toastTitle" class="font-extrabold text-xs uppercase text-emerald-400">Notificación Municipal</div>
-        <div id="toastMsg" class="text-xs sm:text-sm mt-1"></div>
+    <!-- MODAL DE LOGIN CON DNI -->
+    <div id="modalDni" class="hidden fixed inset-0 z-50 bg-slate-950/70 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <div class="flex items-center justify-between border-b pb-2">
+                <h3 class="font-extrabold text-slate-900">Acceso Seguro con DNI</h3>
+                <button type="button" onclick="cerrarModalDni()" class="font-bold text-slate-500">✕</button>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Número de DNI (8 dígitos)</label>
+                <input type="text" id="inputModalDni" maxlength="8" value="31654892" class="w-full border-2 border-slate-300 rounded-xl px-3 py-2.5 font-black">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Nombre Completo</label>
+                <input type="text" id="inputModalNombre" value="Juan Carlos Rimac Cochachin" class="w-full border-2 border-slate-300 rounded-xl px-3 py-2.5 font-bold">
+            </div>
+            <button type="button" onclick="guardarSesionDni()" class="btn-touch w-full bg-muniBlue text-white py-2.5 text-sm">
+                Guardar e Ingresar
+            </button>
+        </div>
     </div>
 
-    <!-- FOOTER -->
-    <footer class="bg-slate-900 text-slate-400 text-xs py-6 px-4 mt-8 border-t-4 border-muniGreen">
-        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-            <div><strong class="text-white">Municipalidad Provincial de Huaraz</strong> • Plataforma Huaraz Lote Seguro © 2026</div>
-            <div>Respaldo Presencial: Ventanilla 4 - Plaza de Armas de Huaraz • Cumple Ley N° 29733</div>
+    <!-- NOTIFICACIÓN FLOTANTE (SIN USAR ALERT) -->
+    <div id="toastModal" class="hidden fixed bottom-5 right-5 left-5 sm:left-auto sm:w-96 z-50 bg-slate-900 text-white p-4 rounded-2xl shadow-2xl border-l-8 border-emerald-500">
+        <div class="flex items-start justify-between gap-2">
+            <div>
+                <h4 id="toastTitle" class="font-extrabold text-xs text-emerald-400 uppercase">Aviso Municipal</h4>
+                <p id="toastMessage" class="text-xs sm:text-sm mt-1"></p>
+            </div>
+            <button type="button" onclick="document.getElementById('toastModal').classList.add('hidden')" class="text-slate-400 hover:text-white font-bold">✕</button>
+        </div>
+    </div>
+
+    <!-- PIE DE PÁGINA -->
+    <footer class="bg-slate-900 text-slate-300 text-xs py-6 px-4 mt-8 border-t-4 border-muniGreen">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div><strong>Municipalidad Provincial de Huaraz</strong> • Plataforma Huaraz Lote Seguro • Cumple Ley N° 29733</div>
+            <div>Atención Presencial: Ventanilla 4 - Plaza de Armas de Huaraz • Central (043) 42-1661</div>
         </div>
     </footer>
 
-    <!-- CLEAN, SYNTAX-VERIFIED JAVASCRIPT (NO INLINE ONCLICK STRINGS) -->
+    <!-- LÓGICA DE DATOS, MAPAS LEAFLET / GOOGLE MAPS Y MÓDULOS -->
     <script>
-        (function () {
-            'use strict';
-
-            // 1. SAFE ELEVATED ZONES DATA (High terraces far from rivers)
-            var safeZones = [
-                {
-                    id: 0,
-                    name: 'Terraza Alta Pongor',
-                    sector: 'Independencia - Ladera Oeste Alta',
-                    coords: [-9.5085, -77.5435],
-                    polygon: [
-                        [-9.5068, -77.5455],
-                        [-9.5068, -77.5415],
-                        [-9.5102, -77.5415],
-                        [-9.5102, -77.5455]
-                    ],
-                    price: 18500,
-                    area: '120 m² (8m x 15m)',
-                    available: 18,
-                    sunarp: 'P.E. 11094821',
-                    distance: '+650m lejos del Río Santa (Meseta Alta)'
-                },
-                {
-                    id: 1,
-                    name: 'Planicie Challhua Alto / Urpay',
-                    sector: 'Huaraz Oeste Alto',
-                    coords: [-9.5390, -77.5395],
-                    polygon: [
-                        [-9.5374, -77.5415],
-                        [-9.5374, -77.5378],
-                        [-9.5406, -77.5378],
-                        [-9.5406, -77.5415]
-                    ],
-                    price: 21000,
-                    area: '120 m² (8m x 15m)',
-                    available: 15,
-                    sunarp: 'P.E. 11096512',
-                    distance: '+520m sobre el cauce del Río Santa'
-                },
-                {
-                    id: 2,
-                    name: 'Meseta Segura Tacllán Este',
-                    sector: 'Expansión Sur-Este Huaraz',
-                    coords: [-9.5465, -77.5235],
-                    polygon: [
-                        [-9.5448, -77.5255],
-                        [-9.5448, -77.5215],
-                        [-9.5482, -77.5215],
-                        [-9.5482, -77.5255]
-                    ],
-                    price: 19800,
-                    area: '120 m² (8m x 15m)',
-                    available: 14,
-                    sunarp: 'P.E. 11098310',
-                    distance: '+750m al Este del Río Santa (Tierra Firme)'
-                },
-                {
-                    id: 3,
-                    name: 'Terrazas de Paria - Wilcahuain',
-                    sector: 'Expansión Norte-Este',
-                    coords: [-9.4960, -77.5060],
-                    polygon: [
-                        [-9.4942, -77.5082],
-                        [-9.4942, -77.5038],
-                        [-9.4978, -77.5038],
-                        [-9.4978, -77.5082]
-                    ],
-                    price: 22500,
-                    area: '140 m² (8m x 17.5m)',
-                    available: 12,
-                    sunarp: 'P.E. 11105932',
-                    distance: '+1,200m lejos de cauces aluviónicos'
-                },
-                {
-                    id: 4,
-                    name: 'Planicie Toclla - Macashca',
-                    sector: 'Expansión Sur Alta',
-                    coords: [-9.5660, -77.5190],
-                    polygon: [
-                        [-9.5642, -77.5212],
-                        [-9.5642, -77.5168],
-                        [-9.5678, -77.5168],
-                        [-9.5678, -77.5212]
-                    ],
-                    price: 17200,
-                    area: '120 m² (8m x 15m)',
-                    available: 16,
-                    sunarp: 'P.E. 11102419',
-                    distance: '+820m al Este de la ribera del Río Santa'
-                }
-            ];
-
-            // 2. PROHIBITED HIGH-RISK ZONES DATA (Red Polygons)
-            var riskZones = [
-                {
-                    name: 'PROHIBIDO CONSTRUIR: Cauce y Faja Marginal del Río Santa',
-                    coords: [
-                        [-9.5120, -77.5382],
-                        [-9.5120, -77.5358],
-                        [-9.5380, -77.5348],
-                        [-9.5550, -77.5340],
-                        [-9.5550, -77.5368],
-                        [-9.5380, -77.5372]
-                    ],
-                    detail: 'Faja Marginal Intangible (ANA / INDECI). Peligro directo de inundación fluvial.'
-                },
-                {
-                    name: 'PROHIBIDO CONSTRUIR: Cono Aluviónico del Río Quilcay / Ruta Cojup',
-                    coords: [
-                        [-9.5230, -77.5355],
-                        [-9.5222, -77.5120],
-                        [-9.5256, -77.5120],
-                        [-9.5258, -77.5355]
-                    ],
-                    detail: 'Ruta crítica de aluvión glaciar (Laguna Palcacocha). Prohibida toda habilitación.'
-                },
-                {
-                    name: 'PROHIBIDO CONSTRUIR: Laderas Inestables Cerro Rataquenua / Pukaventana',
-                    coords: [
-                        [-9.5350, -77.5175],
-                        [-9.5345, -77.5090],
-                        [-9.5445, -77.5095],
-                        [-9.5450, -77.5180]
-                    ],
-                    detail: 'Ladera empinada con riesgo severo de derrumbes y deslizamientos en lluvias.'
-                },
-                {
-                    name: 'PROHIBIDO CONSTRUIR: Quebrada Seca / Pedregal Alto',
-                    coords: [
-                        [-9.5285, -77.5185],
-                        [-9.5275, -77.5105],
-                        [-9.5318, -77.5105],
-                        [-9.5325, -77.5185]
-                    ],
-                    detail: 'Cauce de activación de huaycos estacionales.'
-                }
-            ];
-
-            var expedientes = [
-                { code: 'HZ-2026-0482', citizen: 'Juan Carlos Rimac (31654892)', lot: 'Terraza Alta Pongor - Mz. A Lt. 02', status: 'En Verificación Técnica' },
-                { code: 'HZ-2026-0479', citizen: 'María Henostroza (31609214)', lot: 'Challhua Alto / Urpay - Mz. B Lt. 05', status: 'Vía Rápida (15 días)' }
-            ];
-
-            var userPoints = 650;
-            var selectedZoneIndex = 0;
-            var selectedLotCode = 'Mz. A - Lote 02';
-            var isPlotMode = false;
-            var map = null;
-            var tileLayer = null;
-            var safeLayerGroup = null;
-            var riskLayerGroup = null;
-
-            function showToast(title, msg) {
-                var box = document.getElementById('toastBox');
-                document.getElementById('toastTitle').textContent = title;
-                document.getElementById('toastMsg').textContent = msg;
-                box.classList.remove('hidden');
-                setTimeout(function () {
-                    box.classList.add('hidden');
-                }, 4800);
+        var sectoresSeguros = [
+            {
+                nombre: 'Terraza Alta Pongor',
+                lat: -9.5082, lng: -77.5442,
+                poligono: [[-9.5062, -77.5462], [-9.5062, -77.5422], [-9.5102, -77.5422], [-9.5102, -77.5462]],
+                precio: 24500, cuota: 254, libres: 18, sunarp: 'P.E. 11094821 SUNARP',
+                distanciaRio: '+650m al Oeste del Río Santa (Terraza Alta Firme)'
+            },
+            {
+                nombre: 'Planicie Challhua Alto / Urpay',
+                lat: -9.5385, lng: -77.5302,
+                poligono: [[-9.5368, -77.5320], [-9.5368, -77.5284], [-9.5402, -77.5284], [-9.5402, -77.5320]],
+                precio: 23200, cuota: 238, libres: 15, sunarp: 'P.E. 11096512 SUNARP',
+                distanciaRio: '+520m al Este del Río Santa (Zona Alta Consolidada)'
+            },
+            {
+                nombre: 'Meseta Tacllán Este',
+                lat: -9.5475, lng: -77.5262,
+                poligono: [[-9.5456, -77.5282], [-9.5456, -77.5242], [-9.5494, -77.5242], [-9.5494, -77.5282]],
+                precio: 22000, cuota: 220, libres: 14, sunarp: 'P.E. 11098310 SUNARP',
+                distanciaRio: '+750m al Este del Río Santa (Meseta Segura)'
+            },
+            {
+                nombre: 'Terrazas de Paria - Wilcahuain',
+                lat: -9.5045, lng: -77.5155,
+                poligono: [[-9.5026, -77.5176], [-9.5026, -77.5134], [-9.5064, -77.5134], [-9.5064, -77.5176]],
+                precio: 25800, cuota: 268, libres: 12, sunarp: 'P.E. 11105932 SUNARP',
+                distanciaRio: '+1,200m al Norte del Río Quilcay (Tierra Firme)'
+            },
+            {
+                nombre: 'Planicie Toclla - Macashca',
+                lat: -9.5585, lng: -77.5210,
+                poligono: [[-9.5565, -77.5232], [-9.5565, -77.5188], [-9.5605, -77.5188], [-9.5605, -77.5232]],
+                precio: 19500, cuota: 192, libres: 16, sunarp: 'P.E. 11102419 SUNARP',
+                distanciaRio: '+820m al Este del Río Santa (Planicie Sur)'
             }
+        ];
 
-            // 3. INITIALIZE GOOGLE MAPS VIA LEAFLET (100% GITHUB PAGES COMPATIBLE)
-            function initMap() {
-                var container = document.getElementById('mapa-huaraz');
-                if (!container || map) return;
+        var zonasRiesgo = [
+            {
+                nombre: 'PROHIBIDO CONSTRUIR: Faja Marginal Río Quilcay / Ruta Cojup',
+                coords: [[-9.5232, -77.5358], [-9.5230, -77.5250], [-9.5222, -77.5125], [-9.5255, -77.5125], [-9.5258, -77.5250], [-9.5256, -77.5358]],
+                detalle: 'Cono aluviónico y cauce activo del Río Quilcay (INDECI / ANA).'
+            },
+            {
+                nombre: 'PROHIBIDO CONSTRUIR: Cauce y Ribera del Río Santa',
+                coords: [[-9.5120, -77.5388], [-9.5120, -77.5364], [-9.5380, -77.5352], [-9.5520, -77.5345], [-9.5520, -77.5372], [-9.5380, -77.5378]],
+                detalle: 'Faja marginal intangible con riesgo de inundación fluvial.'
+            },
+            {
+                nombre: 'PROHIBIDO CONSTRUIR: Laderas Inestables del Cerro Rataquenua',
+                coords: [[-9.5350, -77.5175], [-9.5345, -77.5090], [-9.5445, -77.5095], [-9.5450, -77.5180]],
+                detalle: 'Pendiente pronunciada con peligro de derrumbes y deslizamientos.'
+            },
+            {
+                nombre: 'PROHIBIDO CONSTRUIR: Quebrada Pedregal Alto / Tajamar',
+                coords: [[-9.5285, -77.5185], [-9.5275, -77.5105], [-9.5318, -77.5105], [-9.5325, -77.5185]],
+                detalle: 'Activación de huaycos en temporada de lluvias.'
+            }
+        ];
 
-                map = L.map('mapa-huaraz', {
-                    center: [-9.5275, -77.5280],
-                    zoom: 13,
-                    zoomControl: true
-                });
+        var listaTramites = [
+            { codigo: 'HZ-2026-0482', ciudadano: 'Juan Carlos Rimac (31654892)', lote: 'Terraza Alta Pongor Mz. A Lt. 02', estado: 'En Verificación (12/30 días)' },
+            { codigo: 'HZ-2026-0479', ciudadano: 'María Henostroza (31609214)', lote: 'Planicie Challhua Alto Mz. B Lt. 05', estado: 'Vía Rápida (8/15 días)' }
+        ];
 
-                setMapTileStyle('m');
+        var listaDenuncias = [
+            { codigo: 'DEN-9041', zona: 'Laderas del Cerro Rataquenua', reporte: 'Demarcación ilegal con tiza y cobro por lotes sin título.', estado: 'Operativo Procuraduría' },
+            { codigo: 'DEN-9038', zona: 'Faja Marginal Río Quilcay', reporte: 'Instalación de esteras en zona intangible del río.', estado: 'Derivado a Fiscalía' }
+        ];
 
-                safeLayerGroup = L.layerGroup().addTo(map);
-                riskLayerGroup = L.layerGroup().addTo(map);
+        var puntosUsuario = 650;
+        var loteSeleccionado = { sectorIdx: 0, codigo: 'Mz. A - Lote 02', precio: 24500, sunarp: 'P.E. 11094821 SUNARP' };
+        var mapa = null;
+        var capaBaseActual = null;
+        var grupoSeguros = null;
+        var grupoRiesgo = null;
 
-                drawMapOverlays();
+        window.iniciarMapaHuaraz = function() {
+            var contenedor = document.getElementById('mapa-huaraz');
+            if (!contenedor || typeof L === 'undefined') return;
+            if (mapa) return;
 
-                // Click handler for Funcionario to create new safe lot zone
-                map.on('click', function (e) {
-                    if (!isPlotMode) return;
-                    var lat = e.latlng.lat;
-                    var lng = e.latlng.lng;
-                    var d = 0.0018;
-                    var newId = safeZones.length;
-                    safeZones.push({
-                        id: newId,
-                        name: 'Nueva Terraza Municipal #' + (newId + 1),
-                        sector: 'Habilitación Catastral Huaraz',
-                        coords: [lat, lng],
-                        polygon: [
-                            [lat + d, lng - d],
-                            [lat + d, lng + d],
-                            [lat - d, lng + d],
-                            [lat - d, lng - d]
-                        ],
-                        price: 18900,
-                        area: '120 m² (8m x 15m)',
-                        available: 12,
-                        sunarp: 'P.E. 1110990' + newId,
-                        distance: 'Terreno Municipal Verificado'
-                    });
-                    isPlotMode = false;
-                    document.getElementById('plotModeBanner').classList.add('hidden');
-                    drawMapOverlays();
-                    renderZoneCards();
-                    showToast('Terreno Habilitado', 'Se creó una nueva zona verde de lotes seguros en las coordenadas seleccionadas.');
-                });
+            mapa = L.map('mapa-huaraz').setView([-9.5275, -77.5280], 13);
+            capaBaseActual = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&hl=es', {
+                maxZoom: 20,
+                attribution: 'Map data ©2026 Google • Municipalidad de Huaraz'
+            }).addTo(mapa);
 
-                // Force size recalculation for GitHub Pages & responsive containers
-                setTimeout(function () {
-                    map.invalidateSize();
-                }, 250);
+            grupoSeguros = L.layerGroup().addTo(mapa);
+            grupoRiesgo = L.layerGroup().addTo(mapa);
 
-                if (typeof ResizeObserver !== 'undefined') {
-                    var ro = new ResizeObserver(function () {
-                        if (map) map.invalidateSize();
-                    });
-                    ro.observe(container);
+            dibujarCapasEnMapa();
+            setTimeout(function() { mapa.invalidateSize(); }, 300);
+        };
+
+        window.refrescarMapa = function() {
+            if (mapa) {
+                mapa.invalidateSize();
+            } else {
+                window.iniciarMapaHuaraz();
+            }
+        };
+
+        window.cambiarEstiloMapa = function(tipo) {
+            if (!mapa) return;
+            if (capaBaseActual) mapa.removeLayer(capaBaseActual);
+            var url = 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&hl=es';
+            if (tipo === 'satelite') url = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}&hl=es';
+            if (tipo === 'relieve') url = 'https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}&hl=es';
+            capaBaseActual = L.tileLayer(url, { maxZoom: 20 }).addTo(mapa);
+
+            var ids = ['calle', 'satelite', 'relieve'];
+            for (var i = 0; i < ids.length; i++) {
+                var b = document.getElementById('btnCapa-' + ids[i]);
+                if (b) {
+                    b.className = (ids[i] === tipo)
+                        ? 'px-3 py-1.5 rounded-lg bg-blue-600 text-white font-extrabold'
+                        : 'px-3 py-1.5 rounded-lg text-slate-700 hover:bg-white';
                 }
             }
+        };
 
-            function setMapTileStyle(lyrsCode) {
-                if (!map) return;
-                if (tileLayer) {
-                    map.removeLayer(tileLayer);
-                }
-                var url = 'https://mt1.google.com/vt/lyrs=' + lyrsCode + '&x={x}&y={y}&z={z}&hl=es';
-                tileLayer = L.tileLayer(url, {
-                    maxZoom: 20,
-                    attribution: 'Map data ©2026 Google • Municipalidad Provincial de Huaraz'
-                }).addTo(map);
-            }
+        function dibujarCapasEnMapa() {
+            if (!mapa) return;
+            grupoSeguros.clearLayers();
+            grupoRiesgo.clearLayers();
 
-            function drawMapOverlays() {
-                if (!map) return;
-                safeLayerGroup.clearLayers();
-                riskLayerGroup.clearLayers();
-
-                // Draw Safe Green Polygons
-                safeZones.forEach(function (z) {
-                    var poly = L.polygon(z.polygon, {
-                        color: '#047857',
-                        fillColor: '#10b981',
-                        fillOpacity: 0.38,
-                        weight: 2.5
-                    });
-
-                    var gmapsLink = 'https://www.google.com/maps?q=' + z.coords[0] + ',' + z.coords[1];
-                    var popupContainer = document.createElement('div');
-                    popupContainer.style.minWidth = '220px';
-                    popupContainer.innerHTML =
-                        '<div style="background:#dcfce7;color:#15803d;font-weight:800;font-size:10px;padding:2px 6px;border-radius:4px;display:inline-block;">✅ TERRAZA ALTA SEGURA</div>' +
-                        '<div style="font-weight:800;font-size:14px;margin-top:4px;color:#0f172a;">' + z.name + '</div>' +
-                        '<div style="font-size:11px;color:#047857;font-weight:700;margin:3px 0;">🛡️ ' + z.distance + '</div>' +
-                        '<div style="font-size:12px;color:#334155;">Área: <strong>' + z.area + '</strong> • Libres: <strong>' + z.available + '</strong></div>' +
-                        '<div style="font-size:16px;font-weight:900;color:#1e3a8a;margin:4px 0;">S/ ' + z.price.toLocaleString() + '</div>' +
-                        '<a href="' + gmapsLink + '" target="_blank" rel="noopener noreferrer" style="display:block;text-align:center;background:#eff6ff;color:#1d4ed8;font-weight:700;font-size:11px;padding:6px;border-radius:6px;margin-top:4px;text-decoration:none;">Abrir en Google Maps Oficial ↗</a>';
-
-                    var selectBtn = document.createElement('button');
-                    selectBtn.type = 'button';
-                    selectBtn.textContent = 'Elegir Lote en este Sector';
-                    selectBtn.style.cssText = 'width:100%;background:#15803d;color:white;border:none;padding:7px;border-radius:6px;font-weight:700;font-size:11px;margin-top:5px;cursor:pointer;';
-                    selectBtn.addEventListener('click', function () {
-                        selectedZoneIndex = z.id;
-                        document.getElementById('selectSubdivisionZone').value = String(z.id);
-                        renderSubdivisionLots();
-                        showToast('Sector Seleccionado', 'Revise el plano de Manzanas A, B y C de ' + z.name + ' debajo del mapa.');
-                    });
-                    popupContainer.appendChild(selectBtn);
-
-                    poly.bindPopup(popupContainer);
-                    safeLayerGroup.addLayer(poly);
-
-                    var badgeIcon = L.divIcon({
-                        className: 'safe-zone-label',
-                        html: '<div style="background:#059669;color:white;padding:3px 8px;border-radius:999px;font-weight:800;font-size:11px;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.35);white-space:nowrap;">✓ ' + z.name + ' (S/ ' + z.price.toLocaleString() + ')</div>',
-                        iconSize: [180, 24],
-                        iconAnchor: [90, 12]
-                    });
-                    var marker = L.marker(z.coords, { icon: badgeIcon });
-                    marker.bindPopup(popupContainer);
-                    safeLayerGroup.addLayer(marker);
-                });
-
-                // Draw Prohibited Red Polygons
-                riskZones.forEach(function (r) {
-                    var rPoly = L.polygon(r.coords, {
-                        color: '#dc2626',
-                        fillColor: '#ef4444',
-                        fillOpacity: 0.42,
-                        weight: 2.5
-                    });
-
-                    var rCenter = r.coords[0];
-                    var gmapsRiskUrl = 'https://www.google.com/maps?q=' + rCenter[0] + ',' + rCenter[1];
-                    var riskHtml =
-                        '<div style="min-width:210px;">' +
-                        '<div style="background:#dc2626;color:white;font-weight:900;font-size:10px;padding:3px 6px;border-radius:4px;">🚫 PROHIBIDO CONSTRUIR (ANA / INDECI)</div>' +
-                        '<div style="font-weight:800;font-size:13px;margin-top:5px;color:#0f172a;">' + r.name + '</div>' +
-                        '<p style="font-size:11px;color:#475569;margin:4px 0;">' + r.detail + '</p>' +
-                        '<a href="' + gmapsRiskUrl + '" target="_blank" rel="noopener noreferrer" style="display:block;text-align:center;color:#2563eb;font-weight:700;font-size:11px;margin-top:4px;">Ver en Google Maps Oficial ↗</a>' +
+            for (var i = 0; i < sectoresSeguros.length; i++) {
+                (function(idx) {
+                    var s = sectoresSeguros[idx];
+                    var poly = L.polygon(s.poligono, { color: '#047857', fillColor: '#10b981', fillOpacity: 0.38, weight: 2.5 });
+                    var gmapsLink = 'https://www.google.com/maps/search/?api=1&query=' + s.lat + ',' + s.lng;
+                    var htmlPopup = '<div style="min-width:210px;font-family:Inter,sans-serif;">' +
+                        '<div style="color:#15803d;font-weight:800;font-size:11px;">✅ TERRAZA ALTA SEGURA</div>' +
+                        '<div style="font-weight:800;font-size:14px;margin-top:2px;">' + s.nombre + '</div>' +
+                        '<div style="font-size:11px;color:#047857;margin:4px 0;">' + s.distanciaRio + '</div>' +
+                        '<div style="font-weight:900;font-size:16px;color:#1e3a8a;">S/ ' + s.precio.toLocaleString() + ' (' + s.libres + ' libres)</div>' +
+                        '<a href="' + gmapsLink + '" target="_blank" rel="noopener noreferrer" style="display:block;margin-top:6px;background:#f59e0b;color:#0f172a;text-align:center;padding:6px;border-radius:6px;font-weight:800;font-size:11px;text-decoration:none;">Abrir en Google Maps Oficial ↗</a>' +
                         '</div>';
-
-                    rPoly.bindPopup(riskHtml);
-                    riskLayerGroup.addLayer(rPoly);
-                });
-            }
-
-            // 4. RENDER SUBDIVISION LOTS (MANZANAS A, B, C)
-            function renderSubdivisionLots() {
-                var z = safeZones[selectedZoneIndex] || safeZones[0];
-                var grid = document.getElementById('lotsGridContainer');
-                if (!grid) return;
-                grid.innerHTML = '';
-
-                var lotDefs = [
-                    { code: 'Mz. A - Lote 01', status: 'taken' },
-                    { code: 'Mz. A - Lote 02', status: 'free' },
-                    { code: 'Mz. A - Lote 03', status: 'free' },
-                    { code: 'Mz. A - Lote 04', status: 'reserved' },
-                    { code: 'Mz. B - Lote 05', status: 'free' },
-                    { code: 'Mz. B - Lote 06', status: 'free' },
-                    { code: 'Mz. B - Lote 07', status: 'taken' },
-                    { code: 'Mz. B - Lote 08', status: 'free' },
-                    { code: 'Mz. C - Lote 09', status: 'free' },
-                    { code: 'Mz. C - Lote 10', status: 'reserved' },
-                    { code: 'Mz. C - Lote 11', status: 'free' },
-                    { code: 'Mz. C - Lote 12', status: 'free' }
-                ];
-
-                lotDefs.forEach(function (lot) {
-                    var btn = document.createElement('button');
-                    btn.type = 'button';
-                    if (lot.status === 'free') {
-                        btn.className = 'bg-emerald-600 hover:bg-emerald-500 text-white p-3 rounded-xl text-left shadow border-2 border-emerald-800 transition';
-                        btn.innerHTML =
-                            '<div class="text-[10px] font-black uppercase bg-emerald-900/50 px-1.5 py-0.5 rounded inline-block">LIBRE</div>' +
-                            '<div class="font-black text-sm mt-1">' + lot.code + '</div>' +
-                            '<div class="text-[11px] text-emerald-100 font-bold">' + z.area.split(' ')[0] + ' m² • S/ ' + z.price.toLocaleString() + '</div>';
-                        btn.addEventListener('click', function () {
-                            selectedLotCode = lot.code;
-                            updateLotDetailPanel(z, lot.code);
-                        });
-                    } else if (lot.status === 'reserved') {
-                        btn.className = 'bg-amber-400 text-slate-950 p-3 rounded-xl text-left border-2 border-amber-600 opacity-90 cursor-default';
-                        btn.innerHTML =
-                            '<div class="text-[10px] font-black uppercase">RESERVADO</div>' +
-                            '<div class="font-extrabold text-sm mt-1">' + lot.code + '</div>' +
-                            '<div class="text-[11px] font-bold">En Evaluación</div>';
-                    } else {
-                        btn.className = 'bg-slate-300 text-slate-600 p-3 rounded-xl text-left border border-slate-400 opacity-75 cursor-default';
-                        btn.innerHTML =
-                            '<div class="text-[10px] font-bold uppercase">ADJUDICADO</div>' +
-                            '<div class="font-bold text-sm mt-1">' + lot.code + '</div>' +
-                            '<div class="text-[11px]">Con Título SUNARP</div>';
-                    }
-                    grid.appendChild(btn);
-                });
-
-                updateLotDetailPanel(z, 'Mz. A - Lote 02');
-            }
-
-            function updateLotDetailPanel(zone, lotCode) {
-                var monthly = Math.round((zone.price - 5000) / 84);
-                document.getElementById('detailLotTitle').textContent = zone.name + ' • ' + lotCode;
-                document.getElementById('detailLotSunarp').textContent = zone.sunarp;
-                document.getElementById('detailLotArea').textContent = zone.area;
-                document.getElementById('detailLotPrice').textContent = 'S/ ' + zone.price.toLocaleString();
-                document.getElementById('detailLotMonthly').textContent = 'o desde S/ ' + monthly + ' / mes con Bono Techo Propio';
-            }
-
-            // 5. RENDER ZONE CARDS WITH DIRECT GOOGLE MAPS LINK
-            function renderZoneCards() {
-                var container = document.getElementById('zonesCardsContainer');
-                if (!container) return;
-                container.innerHTML = '';
-
-                safeZones.forEach(function (z) {
-                    var gmapsUrl = 'https://www.google.com/maps?q=' + z.coords[0] + ',' + z.coords[1];
-                    var card = document.createElement('div');
-                    card.className = 'bg-white rounded-2xl p-4 border-2 border-slate-200 hover:border-muniGreen shadow-sm flex flex-col justify-between gap-3';
-                    card.innerHTML =
-                        '<div>' +
-                        '<div class="flex items-center justify-between gap-2">' +
-                        '<span class="bg-green-100 text-muniGreen text-xs font-extrabold px-2.5 py-0.5 rounded">✓ ' + z.available + ' LOTES LIBRES</span>' +
-                        '<span class="text-xs font-mono text-slate-500">' + z.sunarp + '</span>' +
-                        '</div>' +
-                        '<h4 class="text-base font-extrabold text-slate-900 mt-2">' + z.name + '</h4>' +
-                        '<p class="text-xs font-bold text-emerald-800 mt-1">🛡️ ' + z.distance + '</p>' +
-                        '<p class="text-xs text-slate-600 mt-1">Área: <strong>' + z.area + '</strong> • Agua EPS Chavín y Luz</p>' +
-                        '</div>' +
-                        '<div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">' +
-                        '<div class="text-xl font-black text-muniBlue">S/ ' + z.price.toLocaleString() + '</div>' +
-                        '<div class="flex items-center gap-1.5">' +
-                        '<a href="' + gmapsUrl + '" target="_blank" rel="noopener noreferrer" class="px-2.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs" title="Abrir en Google Maps Oficial"><i class="fa-brands fa-google text-blue-600 mr-1"></i>Maps ↗</a>' +
-                        '<button type="button" data-focus-zone="' + z.id + '" class="px-3 py-2 rounded-xl bg-muniGreen hover:bg-green-800 text-white font-bold text-xs">Ver en Mapa</button>' +
-                        '</div>' +
-                        '</div>';
-                    container.appendChild(card);
-                });
-            }
-
-            // 6. LOAN SIMULATOR
-            function updateSimulator() {
-                var price = parseFloat(document.getElementById('rngSimPrice').value);
-                var init = parseFloat(document.getElementById('rngSimInitial').value);
-                var rate = parseFloat(document.getElementById('selSimBank').value);
-                var years = parseInt(document.getElementById('selSimYears').value, 10);
-                var bono = document.getElementById('chkSimBono').checked ? 5000 : 0;
-
-                document.getElementById('lblSimPrice').textContent = 'S/ ' + price.toLocaleString();
-                document.getElementById('lblSimInitial').textContent = 'S/ ' + init.toLocaleString();
-
-                var principal = Math.max(1500, price - init - bono);
-                var months = years * 12;
-                var mRate = rate / 12;
-                var monthly = (principal * mRate) / (1 - Math.pow(1 + mRate, -months));
-
-                document.getElementById('lblSimPrincipal').textContent = 'S/ ' + principal.toLocaleString();
-                document.getElementById('lblSimMonthly').textContent = 'S/ ' + Math.round(monthly) + ' / mes';
-            }
-
-            // 7. BACKOFFICE TABLE
-            function renderExpedientes() {
-                var tbody = document.getElementById('tbodyExpedientes');
-                if (!tbody) return;
-                tbody.innerHTML = '';
-                expedientes.forEach(function (ex, idx) {
-                    var tr = document.createElement('tr');
-                    tr.innerHTML =
-                        '<td class="p-3 font-black text-muniBlue">' + ex.code + '</td>' +
-                        '<td class="p-3 font-semibold">' + ex.citizen + '</td>' +
-                        '<td class="p-3">' + ex.lot + '</td>' +
-                        '<td class="p-3"><span class="bg-green-100 text-green-800 font-bold text-xs px-2.5 py-1 rounded-full">' + ex.status + '</span></td>' +
-                        '<td class="p-3"><button type="button" data-approve-idx="' + idx + '" class="bg-muniGreen text-white text-xs font-bold px-3 py-1.5 rounded-lg">Aprobar Título</button></td>';
-                    tbody.appendChild(tr);
-                });
-            }
-
-            // 8. TAB & ROLE SWITCHING
-            function switchTab(tabId) {
-                setRole('ciudadano');
-                document.querySelectorAll('.tab-section').forEach(function (s) {
-                    s.classList.add('hidden');
-                });
-                var target = document.getElementById('tab-' + tabId);
-                if (target) target.classList.remove('hidden');
-
-                document.querySelectorAll('.nav-tab-btn').forEach(function (btn) {
-                    var isCurrent = btn.getAttribute('data-tab') === tabId;
-                    btn.classList.toggle('bg-muniBlue', isCurrent);
-                    btn.classList.toggle('text-white', isCurrent);
-                    btn.classList.toggle('bg-slate-100', !isCurrent);
-                });
-
-                if (tabId === 'catalogo' && map) {
-                    setTimeout(function () {
-                        map.invalidateSize();
-                    }, 150);
-                }
-            }
-
-            function setRole(roleName) {
-                ['ciudadano', 'funcionario', 'admin'].forEach(function (r) {
-                    var view = document.getElementById('view-' + r);
-                    if (view) view.classList.toggle('hidden', r !== roleName);
-                });
-                document.querySelectorAll('.role-btn').forEach(function (b) {
-                    var active = b.getAttribute('data-role') === roleName;
-                    b.className = active
-                        ? 'role-btn flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-muniBlue shadow'
-                        : 'role-btn flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-bold text-blue-200 hover:text-white';
-                });
-                document.getElementById('citizenNav').classList.toggle('hidden', roleName !== 'ciudadano');
-            }
-
-            // 9. EVENT DELEGATION & LISTENERS
-            document.addEventListener('click', function (e) {
-                var tabBtn = e.target.closest('[data-tab]');
-                if (tabBtn) {
-                    switchTab(tabBtn.getAttribute('data-tab'));
-                    return;
-                }
-
-                var gotoBtn = e.target.closest('[data-goto-tab]');
-                if (gotoBtn) {
-                    document.getElementById('smsAlertBanner').classList.add('hidden');
-                    switchTab(gotoBtn.getAttribute('data-goto-tab'));
-                    return;
-                }
-
-                var roleBtn = e.target.closest('[data-role]');
-                if (roleBtn) {
-                    setRole(roleBtn.getAttribute('data-role'));
-                    return;
-                }
-
-                var styleBtn = e.target.closest('[data-map-style]');
-                if (styleBtn) {
-                    var code = styleBtn.getAttribute('data-map-style');
-                    setMapTileStyle(code);
-                    document.querySelectorAll('.map-style-btn').forEach(function (b) {
-                        var active = b.getAttribute('data-map-style') === code;
-                        b.className = active
-                            ? 'map-style-btn px-3 py-1.5 rounded-lg bg-blue-600 text-white font-extrabold shadow-sm'
-                            : 'map-style-btn px-3 py-1.5 rounded-lg text-slate-700 hover:bg-slate-200';
+                    poly.bindPopup(htmlPopup);
+                    var icono = L.divIcon({
+                        className: 'pin-seguro',
+                        html: '<div style="background:#059669;color:#fff;padding:3px 8px;border-radius:999px;font-weight:800;font-size:11px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.35);white-space:nowrap;">✓ ' + s.nombre + ' (S/ ' + s.precio.toLocaleString() + ')</div>',
+                        iconSize: [180, 26],
+                        iconAnchor: [90, 13]
                     });
-                    return;
+                    var marker = L.marker([s.lat, s.lng], { icon: icono }).bindPopup(htmlPopup);
+                    grupoSeguros.addLayer(poly);
+                    grupoSeguros.addLayer(marker);
+                })(i);
+            }
+
+            for (var j = 0; j < zonasRiesgo.length; j++) {
+                var z = zonasRiesgo[j];
+                var rPoly = L.polygon(z.coords, { color: '#dc2626', fillColor: '#ef4444', fillOpacity: 0.42, weight: 2.5 });
+                rPoly.bindPopup('<div style="font-family:Inter,sans-serif;"><strong style="color:#dc2626;">🚫 ' + z.nombre + '</strong><p style="font-size:12px;margin-top:4px;">' + z.detalle + '</p></div>');
+                grupoRiesgo.addLayer(rPoly);
+            }
+        }
+
+        window.filtrarCapasMapa = function(modo) {
+            if (!mapa) return;
+            if (modo === 'todo') {
+                mapa.addLayer(grupoSeguros);
+                mapa.addLayer(grupoRiesgo);
+            } else if (modo === 'seguros') {
+                mapa.addLayer(grupoSeguros);
+                mapa.removeLayer(grupoRiesgo);
+            } else {
+                mapa.removeLayer(grupoSeguros);
+                mapa.addLayer(grupoRiesgo);
+            }
+        };
+
+        window.enfocarSector = function(idx) {
+            var s = sectoresSeguros[idx];
+            if (!s) return;
+            if (mapa) {
+                mapa.setView([s.lat, s.lng], 16);
+            }
+            var btnDefault = document.getElementById('btnAbrirGoogleMapsDefault');
+            if (btnDefault) {
+                btnDefault.href = 'https://www.google.com/maps/search/?api=1&query=' + s.lat + ',' + s.lng;
+            }
+            var sel = document.getElementById('selectSectorPlano');
+            if (sel) {
+                sel.value = String(idx);
+                window.renderizarPlanoManzanas();
+            }
+        };
+
+        window.renderizarPlanoManzanas = function() {
+            var sel = document.getElementById('selectSectorPlano');
+            var idx = sel ? parseInt(sel.value, 10) : 0;
+            var sector = sectoresSeguros[idx] || sectoresSeguros[0];
+            var cont = document.getElementById('grillaLotesManzana');
+            if (!cont) return;
+
+            var codigos = ['Mz. A - Lote 01', 'Mz. A - Lote 02', 'Mz. A - Lote 03', 'Mz. A - Lote 04', 'Mz. B - Lote 05', 'Mz. B - Lote 06', 'Mz. B - Lote 07', 'Mz. B - Lote 08', 'Mz. C - Lote 09', 'Mz. C - Lote 10', 'Mz. C - Lote 11', 'Mz. C - Lote 12'];
+            var html = '';
+            for (var i = 0; i < codigos.length; i++) {
+                var cod = codigos[i];
+                var ocupado = (i === 0 || i === 6);
+                if (ocupado) {
+                    html += '<div class="bg-slate-300 text-slate-600 p-3 rounded-xl text-xs font-bold border border-slate-400">' +
+                        '<div class="text-[10px] uppercase">Adjudicado</div>' +
+                        '<div class="font-extrabold mt-1">' + cod + '</div>' +
+                        '</div>';
+                } else {
+                    html += '<button type="button" onclick="seleccionarLoteManzana(' + idx + ', \'' + cod + '\')" class="bg-emerald-600 hover:bg-emerald-500 text-white p-3 rounded-xl text-left text-xs shadow border-2 border-emerald-800">' +
+                        '<div class="text-[10px] font-black uppercase bg-emerald-900/50 px-1.5 py-0.5 rounded inline-block">Libre</div>' +
+                        '<div class="font-black text-sm mt-1">' + cod + '</div>' +
+                        '<div class="text-emerald-100 font-bold">S/ ' + sector.precio.toLocaleString() + '</div>' +
+                        '</button>';
                 }
+            }
+            cont.innerHTML = html;
+            window.seleccionarLoteManzana(idx, 'Mz. A - Lote 02', true);
+        };
 
-                var filterBtn = e.target.closest('[data-map-filter]');
-                if (filterBtn && map) {
-                    var mode = filterBtn.getAttribute('data-map-filter');
-                    if (mode === 'all') {
-                        map.addLayer(safeLayerGroup);
-                        map.addLayer(riskLayerGroup);
-                    } else if (mode === 'safe') {
-                        map.addLayer(safeLayerGroup);
-                        map.removeLayer(riskLayerGroup);
-                    } else {
-                        map.removeLayer(safeLayerGroup);
-                        map.addLayer(riskLayerGroup);
-                    }
-                    return;
+        window.seleccionarLoteManzana = function(idx, codigoLote, silencioso) {
+            var s = sectoresSeguros[idx] || sectoresSeguros[0];
+            loteSeleccionado = { sectorIdx: idx, codigo: codigoLote, precio: s.precio, sunarp: s.sunarp };
+            document.getElementById('detalleLoteTitulo').textContent = s.nombre + ' • ' + codigoLote;
+            document.getElementById('detalleLoteSunarp').textContent = s.sunarp;
+            document.getElementById('detalleLotePrecio').textContent = 'S/ ' + s.precio.toLocaleString();
+            if (!silencioso) {
+                window.mostrarAviso('Lote Seleccionado', s.nombre + ' - ' + codigoLote + ' (S/ ' + s.precio.toLocaleString() + ')');
+            }
+        };
+
+        window.separarLoteActual = function() {
+            var s = sectoresSeguros[loteSeleccionado.sectorIdx] || sectoresSeguros[0];
+            window.cambiarPestana('tramite');
+            window.mostrarAviso('Lote Listo para Trámite', 'Complete su solicitud para ' + s.nombre + ' - ' + loteSeleccionado.codigo);
+        };
+
+        window.simularLoteActual = function() {
+            var rng = document.getElementById('rngSimPrecio');
+            if (rng) rng.value = loteSeleccionado.precio;
+            window.calcularCuota();
+            window.cambiarPestana('simulador');
+        };
+
+        function renderizarCatalogoTarjetas() {
+            var grid = document.getElementById('catalogoTarjetas');
+            if (!grid) return;
+            var html = '';
+            for (var i = 0; i < sectoresSeguros.length; i++) {
+                var s = sectoresSeguros[i];
+                var gmapsUrl = 'https://www.google.com/maps/search/?api=1&query=' + s.lat + ',' + s.lng;
+                html += '<div class="bg-white rounded-2xl p-4 border-2 border-slate-200 flex flex-col justify-between">' +
+                    '<div>' +
+                    '<span class="bg-green-100 text-green-800 text-xs font-extrabold px-2.5 py-0.5 rounded">' + s.libres + ' LOTES DISPONIBLES</span>' +
+                    '<h4 class="font-extrabold text-slate-900 text-base mt-2">' + s.nombre + '</h4>' +
+                    '<p class="text-xs text-emerald-800 font-bold mt-1">🛡️ ' + s.distanciaRio + '</p>' +
+                    '<p class="text-xs text-slate-500 mt-1">Partida ' + s.sunarp + ' • Agua y Luz</p>' +
+                    '</div>' +
+                    '<div class="mt-4 pt-3 border-t flex items-center justify-between">' +
+                    '<div class="text-xl font-black text-blue-900">S/ ' + s.precio.toLocaleString() + '</div>' +
+                    '<div class="flex gap-1.5">' +
+                    '<a href="' + gmapsUrl + '" target="_blank" rel="noopener noreferrer" class="px-2.5 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold">Google Maps ↗</a>' +
+                    '<button type="button" onclick="enfocarSector(' + i + ')" class="px-3 py-2 rounded-lg bg-green-700 hover:bg-green-800 text-white text-xs font-bold">Ver Lotes</button>' +
+                    '</div></div></div>';
+            }
+            grid.innerHTML = html;
+        }
+
+        window.calcularCuota = function() {
+            var precio = parseFloat(document.getElementById('rngSimPrecio').value || '24500');
+            var inicial = parseFloat(document.getElementById('rngSimInicial').value || '2500');
+            var tea = parseFloat(document.getElementById('selSimBanco').value || '0.085');
+            var anios = parseInt(document.getElementById('selSimAnios').value || '7', 10);
+            var bono = document.getElementById('chkSimBono').checked ? 6000 : 0;
+
+            document.getElementById('lblSimPrecio').textContent = 'S/ ' + precio.toLocaleString();
+            document.getElementById('lblSimInicial').textContent = 'S/ ' + inicial.toLocaleString();
+
+            var monto = Math.max(2000, precio - inicial - bono);
+            var meses = anios * 12;
+            var tem = tea / 12;
+            var cuota = (monto * tem) / (1 - Math.pow(1 + tem, -meses));
+
+            document.getElementById('txtCuotaMensual').textContent = 'S/ ' + Math.round(cuota) + ' / mes';
+            document.getElementById('txtMontoFinanciado').textContent = 'Monto a financiar: S/ ' + monto.toLocaleString();
+        };
+
+        window.sumarPuntos = function(pts, motivo) {
+            puntosUsuario += pts;
+            document.getElementById('txtPuntosUsuario').textContent = puntosUsuario + ' pts';
+            document.getElementById('badgePuntosNav').textContent = puntosUsuario + ' pts';
+            window.mostrarAviso('Puntos Huaraz Registrados', 'Sumó +' + pts + ' puntos por ' + motivo + '. Total: ' + puntosUsuario + ' pts.');
+        };
+
+        window.canjearPuntos = function(costo, beneficio) {
+            if (puntosUsuario < costo) {
+                window.mostrarAviso('Puntos Insuficientes', 'Necesita ' + costo + ' puntos para canjear ' + beneficio + '.');
+                return;
+            }
+            puntosUsuario -= costo;
+            document.getElementById('txtPuntosUsuario').textContent = puntosUsuario + ' pts';
+            document.getElementById('badgePuntosNav').textContent = puntosUsuario + ' pts';
+            if (costo === 1000) {
+                document.getElementById('badgeViaRapida').textContent = '⚡ VÍA RÁPIDA ACTIVADA: Resolución en menos de 15 días';
+            }
+            window.mostrarAviso('Beneficio Activado', 'Canjeó con éxito: ' + beneficio);
+        };
+
+        window.enviarTramite = function(e) {
+            e.preventDefault();
+            var dni = document.getElementById('inputTramiteDni').value;
+            var nom = document.getElementById('inputTramiteNombre').value;
+            var lote = document.getElementById('inputTramiteLote').value;
+            var cod = 'HZ-2026-0' + Math.floor(500 + Math.random() * 400);
+            listaTramites.unshift({ codigo: cod, ciudadano: nom + ' (' + dni + ')', lote: lote, estado: 'Recibido (< 30 días)' });
+            renderizarTablasFuncionario();
+            window.mostrarAviso('Trámite Registrado (' + cod + ')', 'Su solicitud fue enviada. Tiempo máximo de resolución: 30 días.');
+        };
+
+        window.fijarGpsDenuncia = function() {
+            document.getElementById('txtGpsDenuncia').textContent = '✓ GPS Capturado: -9.5241, -77.5198 (Precisión 5m - Huaraz)';
+            window.mostrarAviso('GPS Capturado', 'Ubicación adjuntada al reporte anónimo.');
+        };
+
+        window.enviarDenuncia = function(e) {
+            e.preventDefault();
+            var zona = document.getElementById('inputDenunciaZona').value;
+            var desc = document.getElementById('inputDenunciaDesc').value;
+            var cod = 'DEN-' + Math.floor(9100 + Math.random() * 800);
+            listaDenuncias.unshift({ codigo: cod, zona: zona, reporte: desc, estado: 'Alerta Recibida' });
+            document.getElementById('inputDenunciaDesc').value = '';
+            renderizarTablasFuncionario();
+            window.mostrarAviso('Denuncia Enviada (' + cod + ')', 'Alerta remitida a Procuraduría Municipal y Fiscalía.');
+        };
+
+        function renderizarTablasFuncionario() {
+            var tbT = document.getElementById('tablaTramitesFuncionario');
+            if (tbT) {
+                var htmlT = '';
+                for (var i = 0; i < listaTramites.length; i++) {
+                    var t = listaTramites[i];
+                    htmlT += '<tr class="border-b"><td class="p-3 font-black text-blue-900">' + t.codigo + '</td>' +
+                        '<td class="p-3 font-semibold">' + t.ciudadano + '</td>' +
+                        '<td class="p-3">' + t.lote + '</td>' +
+                        '<td class="p-3"><span class="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded">' + t.estado + '</span></td>' +
+                        '<td class="p-3"><button type="button" onclick="aprobarExpediente(' + i + ')" class="bg-green-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg">Aprobar Lote</button></td></tr>';
                 }
+                tbT.innerHTML = htmlT;
+            }
 
-                var jumpBtn = e.target.closest('[data-jump-zone]');
-                if (jumpBtn && map) {
-                    var idx = parseInt(jumpBtn.getAttribute('data-jump-zone'), 10);
-                    var z = safeZones[idx];
-                    if (z) {
-                        map.setView(z.coords, 16, { animate: true });
-                        selectedZoneIndex = idx;
-                        document.getElementById('selectSubdivisionZone').value = String(idx);
-                        renderSubdivisionLots();
-                    }
-                    return;
+            var tbD = document.getElementById('tablaDenunciasFuncionario');
+            if (tbD) {
+                var htmlD = '';
+                for (var j = 0; j < listaDenuncias.length; j++) {
+                    var d = listaDenuncias[j];
+                    htmlD += '<tr class="border-b"><td class="p-3 font-black text-red-700">' + d.codigo + '</td>' +
+                        '<td class="p-3 font-bold">' + d.zona + '</td>' +
+                        '<td class="p-3">' + d.reporte + '</td>' +
+                        '<td class="p-3"><span class="bg-red-100 text-red-800 text-xs font-bold px-2 py-1 rounded">' + d.estado + '</span></td>' +
+                        '<td class="p-3"><button type="button" onclick="intervenirDenuncia(' + j + ')" class="bg-slate-900 text-white text-xs font-bold px-3 py-1.5 rounded-lg">Enviar Operativo</button></td></tr>';
                 }
+                tbD.innerHTML = htmlD;
+            }
+        }
 
-                var focusBtn = e.target.closest('[data-focus-zone]');
-                if (focusBtn && map) {
-                    var fIdx = parseInt(focusBtn.getAttribute('data-focus-zone'), 10);
-                    var fz = safeZones[fIdx];
-                    if (fz) {
-                        window.scrollTo({ top: 120, behavior: 'smooth' });
-                        map.setView(fz.coords, 16, { animate: true });
-                    }
-                    return;
-                }
+        window.aprobarExpediente = function(idx) {
+            if (listaTramites[idx]) {
+                listaTramites[idx].estado = '✅ Adjudicado con Título';
+                renderizarTablasFuncionario();
+                window.mostrarAviso('Expediente Aprobado', 'Lote formal adjudicado en menos de 30 días.');
+            }
+        };
 
-                var earnBtn = e.target.closest('[data-earn-pts]');
-                if (earnBtn) {
-                    var pts = parseInt(earnBtn.getAttribute('data-earn-pts'), 10);
-                    userPoints += pts;
-                    document.getElementById('lblUserPoints').textContent = userPoints + ' pts';
-                    document.getElementById('navPointsBadge').textContent = userPoints + ' pts';
-                    showToast('Puntos Huaraz Sumados', 'Se agregaron +' + pts + ' puntos a su cuenta vecinal.');
-                    return;
-                }
+        window.intervenirDenuncia = function(idx) {
+            if (listaDenuncias[idx]) {
+                listaDenuncias[idx].estado = '🚓 Operativo en Campo';
+                renderizarTablasFuncionario();
+                window.mostrarAviso('Operativo Desplegado', 'Procuraduría y Serenazgo notificados.');
+            }
+        };
 
-                var redeemBtn = e.target.closest('[data-redeem]');
-                if (redeemBtn) {
-                    var cost = parseInt(redeemBtn.getAttribute('data-redeem'), 10);
-                    if (userPoints < cost) {
-                        showToast('Puntos Insuficientes', 'Necesita ' + cost + ' puntos. Participe en una faena comunal abajo.');
-                        return;
-                    }
-                    userPoints -= cost;
-                    document.getElementById('lblUserPoints').textContent = userPoints + ' pts';
-                    document.getElementById('navPointsBadge').textContent = userPoints + ' pts';
-                    if (cost === 1000) {
-                        document.getElementById('fastTrackStatusPill').textContent = '⚡ VÍA RÁPIDA ACTIVADA: Resolución en 15 días';
-                    }
-                    showToast('Beneficio Canjeado', 'Beneficio municipal aplicado exitosamente a su expediente con DNI.');
-                    return;
-                }
+        window.habilitarNuevoTerrenoDemo = function() {
+            sectoresSeguros[0].libres += 6;
+            renderizarCatalogoTarjetas();
+            dibujarCapasEnMapa();
+            window.mostrarAviso('Terrenos Habilitados', 'Se habilitaron +6 nuevos lotes formales en Terraza Alta Pongor.');
+        };
 
-                var approveBtn = e.target.closest('[data-approve-idx]');
-                if (approveBtn) {
-                    var aIdx = parseInt(approveBtn.getAttribute('data-approve-idx'), 10);
-                    if (expedientes[aIdx]) {
-                        expedientes[aIdx].status = '✅ Adjudicado con Título';
-                        renderExpedientes();
-                        showToast('Expediente Aprobado', 'Título municipal aprobado dentro del plazo menor a 30 días.');
-                    }
-                }
-            });
+        window.dispararSimulacionSms = function() {
+            document.getElementById('smsBanner').classList.remove('hidden');
+        };
 
-            // Direct Button Listeners
-            document.getElementById('btnTestSms').addEventListener('click', function () {
-                document.getElementById('smsAlertBanner').classList.remove('hidden');
-            });
-            document.getElementById('btnCloseSms').addEventListener('click', function () {
-                document.getElementById('smsAlertBanner').classList.add('hidden');
-            });
-            document.getElementById('btnResetMap').addEventListener('click', function () {
-                if (map) map.setView([-9.5275, -77.5280], 13, { animate: true });
-            });
-            document.getElementById('btnTogglePlotMode').addEventListener('click', function () {
-                isPlotMode = !isPlotMode;
-                document.getElementById('plotModeBanner').classList.toggle('hidden', !isPlotMode);
-            });
-            document.getElementById('btnCancelPlotMode').addEventListener('click', function () {
-                isPlotMode = false;
-                document.getElementById('plotModeBanner').classList.add('hidden');
-            });
-            document.getElementById('selectSubdivisionZone').addEventListener('change', function (e) {
-                selectedZoneIndex = parseInt(e.target.value, 10);
-                renderSubdivisionLots();
-                if (map && safeZones[selectedZoneIndex]) {
-                    map.setView(safeZones[selectedZoneIndex].coords, 15, { animate: true });
-                }
-            });
-            document.getElementById('btnReserveSelectedLot').addEventListener('click', function () {
-                switchTab('tramite');
-                showToast('Lote Preseleccionado', 'Complete el envío para separar ' + selectedLotCode + '.');
-            });
-            document.getElementById('btnSimulateSelectedLot').addEventListener('click', function () {
-                var z = safeZones[selectedZoneIndex] || safeZones[0];
-                document.getElementById('rngSimPrice').value = z.price;
-                updateSimulator();
-                switchTab('simulador');
-            });
-            document.getElementById('btnLiteMode').addEventListener('click', function () {
-                document.body.classList.toggle('modo-ligero');
-                var on = document.body.classList.contains('modo-ligero');
-                document.getElementById('liteModeLabel').textContent = on ? 'Modo Ligero: ON' : 'Modo Ligero: OFF';
-            });
-            var largeFont = false;
-            document.getElementById('btnLargeText').addEventListener('click', function () {
-                largeFont = !largeFont;
-                document.documentElement.style.fontSize = largeFont ? '18px' : '16px';
-            });
-            document.getElementById('btnLookupDni').addEventListener('click', function () {
-                showToast('DNI Verificado con RENIEC', 'Ciudadano habilitado sin otra propiedad en SUNARP Huaraz.');
-            });
-            document.getElementById('formTramite').addEventListener('submit', function (e) {
-                e.preventDefault();
-                var nombre = document.getElementById('inputTramiteNombre').value;
-                var lote = document.getElementById('selectTramiteLote').value;
-                expedientes.unshift({
-                    code: 'HZ-2026-0' + Math.floor(500 + Math.random() * 400),
-                    citizen: nombre,
-                    lot: lote,
-                    status: 'Recibido (< 30 días)'
-                });
-                renderExpedientes();
-                showToast('Trámite Registrado', 'Su expediente ha sido ingresado con meta de resolución menor a 30 días.');
-            });
-            document.getElementById('btnCaptureGps').addEventListener('click', function () {
-                document.getElementById('inputDenunciaGps').value = '-9.5242, -77.5198 (Precisión GPS 4m)';
-                showToast('GPS Capturado', 'Ubicación exacta adjuntada al reporte anónimo.');
-            });
-            document.getElementById('formDenuncia').addEventListener('submit', function (e) {
-                e.preventDefault();
-                document.getElementById('txtDenunciaDetalle').value = '';
-                var kpi = document.getElementById('kpiDenuncias');
-                kpi.textContent = String(parseInt(kpi.textContent, 10) + 1);
-                showToast('Denuncia Anónima Enviada', 'Notificación enviada a Procuraduría Municipal y Fiscalía.');
-            });
-            document.getElementById('btnAddPointsFuncionario').addEventListener('click', function () {
-                userPoints += 100;
-                document.getElementById('lblUserPoints').textContent = userPoints + ' pts';
-                document.getElementById('navPointsBadge').textContent = userPoints + ' pts';
-                showToast('Puntos Asignados', 'Se acreditaron +100 Puntos Huaraz al vecino.');
-            });
+        window.cerrarSms = function() {
+            document.getElementById('smsBanner').classList.add('hidden');
+        };
 
-            ['rngSimPrice', 'rngSimInitial', 'selSimBank', 'selSimYears', 'chkSimBono'].forEach(function (id) {
-                document.getElementById(id).addEventListener('input', updateSimulator);
-                document.getElementById(id).addEventListener('change', updateSimulator);
-            });
+        window.alternarModoLigero = function() {
+            document.body.classList.toggle('modo-ligero');
+            var activo = document.body.classList.contains('modo-ligero');
+            document.getElementById('btnModoLigero').innerHTML = activo
+                ? '<i class="fa-solid fa-bolt text-amber-300 mr-1"></i> Modo Ligero: ON'
+                : '<i class="fa-solid fa-bolt text-green-400 mr-1"></i> Modo Ligero: OFF';
+            window.mostrarAviso('Modo Conexión Lenta', activo ? 'Activado para ahorrar datos móviles.' : 'Desactivado.');
+        };
 
-            // Initialize Everything on DOM Ready
-            window.addEventListener('DOMContentLoaded', function () {
-                renderZoneCards();
-                renderSubdivisionLots();
-                updateSimulator();
-                renderExpedientes();
-                initMap();
-            });
-        })();
+        var letraGrandeActiva = false;
+        window.alternarLetraGrande = function() {
+            letraGrandeActiva = !letraGrandeActiva;
+            document.documentElement.style.fontSize = letraGrandeActiva ? '18px' : '16px';
+        };
+
+        window.abrirModalDni = function() {
+            document.getElementById('modalDni').classList.remove('hidden');
+        };
+
+        window.cerrarModalDni = function() {
+            document.getElementById('modalDni').classList.add('hidden');
+        };
+
+        window.guardarSesionDni = function() {
+            var dni = document.getElementById('inputModalDni').value;
+            var nom = document.getElementById('inputModalNombre').value;
+            document.getElementById('badgeDniDesktop').textContent = 'DNI: ' + dni + ' (' + nom.split(' ')[0] + ')';
+            document.getElementById('badgeDniMovil').textContent = 'DNI ' + dni;
+            document.getElementById('inputTramiteDni').value = dni;
+            document.getElementById('inputTramiteNombre').value = nom;
+            window.cerrarModalDni();
+            window.mostrarAviso('Sesión Iniciada', 'Bienvenido(a), ' + nom);
+        };
+
+        window.addEventListener('DOMContentLoaded', function() {
+            renderizarCatalogoTarjetas();
+            window.renderizarPlanoManzanas();
+            window.calcularCuota();
+            renderizarTablasFuncionario();
+            window.iniciarMapaHuaraz();
+        });
     </script>
 </body>
 </html>
