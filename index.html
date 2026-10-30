@@ -190,11 +190,11 @@
                     </div>
                 </div>
                 <button type="button" onclick="abrirModalDni()" class="md:hidden bg-amber-400 text-slate-950 font-extrabold px-3 py-2 rounded-xl text-xs">
-                    <i class="fa-solid fa-id-card mr-1"></i> <span id="badgeDniMovil">DNI 31654892</span>
+                    <i class="fa-solid fa-id-card mr-1"></i> <span id="badgeDniMovil">Ingresar DNI</span>
                 </button>
             </div>
 
-            <!-- Selector de Rol: Ciudadano / Funcionario / Administrador -->
+            <!-- Selector de Rol y Botón de Acceso con DNI -->
             <div class="flex flex-wrap items-center justify-between md:justify-end gap-2">
                 <div class="bg-muniBlueDark p-1 rounded-xl flex items-center gap-1 border border-blue-700 w-full sm:w-auto">
                     <button type="button" id="btnRol-ciudadano" onclick="cambiarRol('ciudadano')" class="px-3 py-1.5 rounded-lg text-xs font-extrabold bg-white text-blue-900 shadow">
@@ -209,7 +209,11 @@
                 </div>
                 <button type="button" onclick="abrirModalDni()" class="hidden md:flex items-center gap-2 bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold px-3.5 py-2 rounded-xl text-xs shadow">
                     <i class="fa-solid fa-id-card"></i>
-                    <span id="badgeDniDesktop">DNI: 31654892 (Juan Rimac)</span>
+                    <span id="badgeDniDesktop">Identificarse con DNI</span>
+                </button>
+                <button type="button" id="btnCerrarSesionTop" onclick="limpiarSesionDni()" class="hidden items-center gap-1.5 bg-red-600 hover:bg-red-500 text-white font-bold px-3 py-2 rounded-xl text-xs shadow">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>Salir / Limpiar DNI</span>
                 </button>
             </div>
         </div>
@@ -233,7 +237,7 @@
                     <button type="button" id="btnTab-puntos" data-tab="puntos" onclick="cambiarPestana('puntos')" class="nav-tab-btn shrink-0 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-800">
                         <i class="fa-solid fa-star text-amber-500"></i>
                         <span>4. Puntos Huaraz</span>
-                        <span id="badgePuntosNav" class="bg-amber-100 text-amber-900 text-xs font-extrabold px-2 py-0.5 rounded-full">650 pts</span>
+                        <span id="badgePuntosNav" class="bg-amber-100 text-amber-900 text-xs font-extrabold px-2 py-0.5 rounded-full">0 pts</span>
                     </button>
                     <button type="button" id="btnTab-denuncias" data-tab="denuncias" onclick="cambiarPestana('denuncias')" class="nav-tab-btn shrink-0 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200">
                         <i class="fa-solid fa-triangle-exclamation text-red-600"></i>
@@ -250,6 +254,37 @@
 
     <!-- CONTENEDOR PRINCIPAL -->
     <main class="flex-grow max-w-7xl w-full mx-auto px-3 sm:px-6 py-5">
+
+        <!-- BARRA RÁPIDA DE CONSULTA DE DNI (CONECTADO A PADRÓN RENIEC) -->
+        <div class="bg-white rounded-2xl p-4 shadow-sm border-2 border-blue-900/20 mb-5">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                <div class="flex items-center gap-2.5">
+                    <span id="iconoEstadoReniec" class="w-10 h-10 rounded-xl bg-slate-200 text-slate-700 flex items-center justify-center font-black shrink-0">
+                        <i class="fa-solid fa-id-card-clip text-lg"></i>
+                    </span>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[11px] font-extrabold uppercase text-blue-800">Consulta Rápida con tu DNI (Conectado a Padrón RENIEC)</span>
+                            <span id="checkValidadoReniec" class="hidden bg-emerald-100 text-emerald-800 text-[11px] font-black px-2 py-0.5 rounded-full border border-emerald-300">
+                                <i class="fa-solid fa-circle-check mr-1"></i>Identidad validada en Padrón Municipal / RENIEC
+                            </span>
+                        </div>
+                        <div id="bannerCiudadanoActivo" class="text-sm sm:text-base font-black text-slate-700 mt-0.5">
+                            Ingrese su número de DNI para consultar su expediente, lote asignado o Puntos Huaraz.
+                        </div>
+                    </div>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <input type="text" id="inputHeaderDni" maxlength="9" placeholder="Digite su N° de DNI..." oninput="buscarDniEnTiempoReal(this.value, 'header')" class="border-2 border-slate-300 focus:border-blue-800 rounded-xl px-3.5 py-2 text-sm font-black text-slate-900 w-44 sm:w-52">
+                    <button type="button" onclick="consultarDniDesdeHeader()" class="btn-touch bg-muniBlue hover:bg-blue-800 text-white px-4 py-2 text-xs sm:text-sm font-extrabold">
+                        <i class="fa-solid fa-magnifying-glass mr-1.5"></i> Consultar DNI
+                    </button>
+                    <button type="button" id="btnLimpiarDniBarra" onclick="limpiarSesionDni()" class="hidden btn-touch bg-slate-200 hover:bg-slate-300 text-slate-800 px-3 py-2 text-xs font-extrabold">
+                        <i class="fa-solid fa-eraser mr-1"></i> Limpiar DNI
+                    </button>
+                </div>
+            </div>
+        </div>
 
         <!-- ======================================================= -->
         <!-- VISTA 1: CIUDADANO (6 MÓDULOS COMPLETOS)                -->
@@ -379,85 +414,129 @@
 
             <!-- PESTAÑA 2: TRÁMITE EN LÍNEA (< 30 DÍAS) -->
             <section id="sec-tramite" class="hidden space-y-6">
-                <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-4">
-                    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-3">
+                <!-- Buscador Instantáneo por DNI -->
+                <div class="bg-gradient-to-r from-slate-900 to-blue-950 text-white rounded-2xl p-5 shadow-md space-y-3">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
                         <div>
-                            <span class="bg-blue-100 text-muniBlue text-xs font-extrabold px-2.5 py-1 rounded-full uppercase">Plazo Garantizado: Menos de 30 Días</span>
-                            <h2 class="text-xl font-extrabold text-slate-900 mt-1">Seguimiento de Expediente #HZ-2026-0482</h2>
+                            <span class="bg-amber-400 text-slate-950 text-xs font-black px-2.5 py-0.5 rounded uppercase">Validación en Línea RENIEC / SISFOH</span>
+                            <h3 class="text-lg sm:text-xl font-extrabold mt-1">Consulta de Expediente y Registro con DNI</h3>
+                            <p class="text-xs text-blue-200">Digite su número de DNI para verificar su identidad y cargar automáticamente el estado de su trámite.</p>
                         </div>
-                        <span id="badgeViaRapida" class="bg-amber-100 text-amber-900 text-xs font-extrabold px-3 py-1.5 rounded-xl border border-amber-300">
-                            ⏱️ Plazo actual: Día 12 de 30 (En Verificación Técnica)
-                        </span>
-                    </div>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
-                        <div class="p-3.5 rounded-xl border-2 border-green-500 bg-green-50">
-                            <div class="font-extrabold text-green-700">PASO 1 • COMPLETADO</div>
-                            <div class="font-bold text-slate-900 text-sm mt-1">Validación DNI</div>
-                            <p class="text-slate-600 mt-0.5">Identidad verificada en RENIEC.</p>
-                        </div>
-                        <div class="p-3.5 rounded-xl border-2 border-green-500 bg-green-50">
-                            <div class="font-extrabold text-green-700">PASO 2 • COMPLETADO</div>
-                            <div class="font-bold text-slate-900 text-sm mt-1">Filtro SUNARP</div>
-                            <p class="text-slate-600 mt-0.5">Familia sin otra vivienda en Huaraz.</p>
-                        </div>
-                        <div class="p-3.5 rounded-xl border-2 border-blue-600 bg-blue-50">
-                            <div class="font-extrabold text-blue-700">PASO 3 • EN PROCESO</div>
-                            <div class="font-bold text-slate-900 text-sm mt-1">Asignación de Lote</div>
-                            <p class="text-slate-600 mt-0.5">Revisión técnica de lote seguro.</p>
-                        </div>
-                        <div class="p-3.5 rounded-xl border-2 border-slate-200 bg-slate-50">
-                            <div class="font-extrabold text-slate-500">PASO 4 • PENDIENTE</div>
-                            <div class="font-bold text-slate-800 text-sm mt-1">Título Municipal</div>
-                            <p class="text-slate-500 mt-0.5">Entrega en menos de 30 días.</p>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <input type="text" id="inputBuscadorDni" maxlength="9" placeholder="Ingrese su N° de DNI" oninput="buscarDniEnTiempoReal(this.value, 'buscador')" class="px-3.5 py-2.5 rounded-xl text-slate-900 font-black text-sm w-48 sm:w-56 border-2 border-amber-400">
+                            <button type="button" onclick="buscarDniBoton()" class="btn-touch bg-amber-400 hover:bg-amber-300 text-slate-950 px-4 py-2.5 text-xs sm:text-sm font-black">
+                                <i class="fa-solid fa-magnifying-glass mr-1.5"></i> Consultar DNI
+                            </button>
+                            <button type="button" onclick="limpiarSesionDni()" class="btn-touch bg-slate-800 hover:bg-slate-700 text-white px-3 py-2.5 text-xs border border-slate-600">
+                                <i class="fa-solid fa-xmark mr-1"></i> Limpiar
+                            </button>
                         </div>
                     </div>
                 </div>
 
-                <!-- Formulario de Solicitud -->
+                <!-- Estado del Expediente del DNI Seleccionado -->
+                <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-4">
+                    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-3">
+                        <div>
+                            <span class="bg-blue-100 text-muniBlue text-xs font-extrabold px-2.5 py-1 rounded-full uppercase">Plazo Garantizado: Menos de 30 Días</span>
+                            <h2 id="tituloExpedienteCiudadano" class="text-xl font-extrabold text-slate-900 mt-1">Seguimiento de Expediente Municipal</h2>
+                            <p id="subtituloCondicionCiudadano" class="text-xs font-bold text-slate-500 mt-0.5">Escriba su número de DNI arriba o en el formulario para consultar el avance de su solicitud.</p>
+                        </div>
+                        <span id="badgeViaRapida" class="bg-slate-100 text-slate-700 text-xs font-extrabold px-3 py-1.5 rounded-xl border border-slate-300">
+                            ⏳ Sin DNI consultado
+                        </span>
+                    </div>
+
+                    <div id="pasosTramiteContainer" class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+                        <div class="p-3.5 rounded-xl border-2 border-slate-200 bg-slate-50">
+                            <div class="font-extrabold text-slate-500">PASO 1 • PENDIENTE</div>
+                            <div class="font-bold text-slate-800 text-sm mt-1">Validación DNI</div>
+                            <p class="text-slate-500 mt-0.5">Verificación de identidad en RENIEC.</p>
+                        </div>
+                        <div class="p-3.5 rounded-xl border-2 border-slate-200 bg-slate-50">
+                            <div class="font-extrabold text-slate-500">PASO 2 • PENDIENTE</div>
+                            <div class="font-bold text-slate-800 text-sm mt-1">Cruce SISFOH / SUNARP</div>
+                            <p class="text-slate-500 mt-0.5">Verificación de no poseer otra vivienda.</p>
+                        </div>
+                        <div class="p-3.5 rounded-xl border-2 border-slate-200 bg-slate-50">
+                            <div class="font-extrabold text-slate-500">PASO 3 • PENDIENTE</div>
+                            <div class="font-bold text-slate-800 text-sm mt-1">Verificación Técnica</div>
+                            <p class="text-slate-500 mt-0.5">Evaluación de lote en terraza segura.</p>
+                        </div>
+                        <div class="p-3.5 rounded-xl border-2 border-slate-200 bg-slate-50">
+                            <div class="font-extrabold text-slate-500">PASO 4 • PENDIENTE</div>
+                            <div class="font-bold text-slate-800 text-sm mt-1">Título Municipal (&lt;30d)</div>
+                            <p class="text-slate-500 mt-0.5">Resolución de adjudicación lista.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Formulario de Solicitud Autocompletado -->
                 <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200">
-                    <h3 class="text-lg font-extrabold text-slate-900 mb-3">Registrar Solicitud de Lote Seguro y Subir Documentos</h3>
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                        <h3 class="text-lg font-extrabold text-slate-900">Formulario Oficial de Solicitud de Lote Seguro</h3>
+                        <span id="avisoAutocompletadoForm" class="hidden text-xs font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-300 px-3 py-1 rounded-lg">
+                            <i class="fa-solid fa-check-double mr-1"></i> Datos autocompletados desde Padrón Municipal / RENIEC
+                        </span>
+                    </div>
                     <form onsubmit="enviarTramite(event)" class="space-y-4">
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
-                                <label class="block text-xs font-bold text-slate-700 mb-1">DNI del Solicitante</label>
-                                <input type="text" id="inputTramiteDni" maxlength="8" value="31654892" required class="w-full border-2 border-slate-300 rounded-xl px-3 py-2.5 font-bold">
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Número de DNI del Solicitante</label>
+                                <input type="text" id="inputTramiteDni" maxlength="9" value="" placeholder="Digite su N° de DNI" oninput="buscarDniEnTiempoReal(this.value, 'form')" required class="w-full border-2 border-blue-600 bg-blue-50/40 rounded-xl px-3 py-2.5 font-black text-slate-900">
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-slate-700 mb-1">Nombres y Apellidos</label>
-                                <input type="text" id="inputTramiteNombre" value="Juan Carlos Rimac Cochachin" required class="w-full border-2 border-slate-300 rounded-xl px-3 py-2.5 font-bold">
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Nombres y Apellidos Completos</label>
+                                <input type="text" id="inputTramiteNombre" value="" placeholder="Se autocompleta con su DNI o escriba aquí" required class="w-full border-2 border-slate-300 rounded-xl px-3 py-2.5 font-extrabold text-slate-900">
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-slate-700 mb-1">Celular para Alertas SMS</label>
-                                <input type="tel" id="inputTramiteCel" value="943812904" required class="w-full border-2 border-slate-300 rounded-xl px-3 py-2.5 font-bold">
+                                <input type="tel" id="inputTramiteCel" value="" placeholder="Ej: 943000000" required class="w-full border-2 border-slate-300 rounded-xl px-3 py-2.5 font-bold">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Sector Actual de Procedencia</label>
+                                <input type="text" id="inputTramiteSector" value="" placeholder="Ej: Pedregal, Quilcay, Rataquenua..." required class="w-full border-2 border-slate-300 rounded-xl px-3 py-2.5 font-bold text-slate-800">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Prioridad / Condición Familiar</label>
+                                <input type="text" id="inputTramiteCondicion" value="" placeholder="Clasificación de prioridad municipal" required class="w-full border-2 border-slate-300 rounded-xl px-3 py-2.5 font-bold text-slate-800">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Lote Formal Solicitado / Asignado</label>
+                                <select id="inputTramiteLote" class="w-full border-2 border-slate-300 rounded-xl px-3 py-2.5 font-bold bg-white">
+                                    <option value="S1">S1 - Terraza Alta Pongor (S/ 24,500)</option>
+                                    <option value="S2">S2 - Planicie Challhua Alto / Urpay (S/ 23,200)</option>
+                                    <option value="S3">S3 - Meseta Segura Tacllán Este (S/ 22,000)</option>
+                                    <option value="S4">S4 - Terrazas de Paria - Wilcahuain (S/ 25,800)</option>
+                                    <option value="S5">S5 - Planicie Toclla - Macashca (S/ 19,500)</option>
+                                </select>
                             </div>
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-xs font-bold text-slate-700 mb-1">Lote Formal Solicitado</label>
-                                <select id="inputTramiteLote" class="w-full border-2 border-slate-300 rounded-xl px-3 py-2.5 font-bold bg-white">
-                                    <option value="Terraza Alta Pongor - Mz. A Lote 02 (S/ 24,500)">Terraza Alta Pongor - Mz. A Lote 02 (S/ 24,500)</option>
-                                    <option value="Planicie Challhua Alto / Urpay - Mz. B Lote 05 (S/ 23,200)">Planicie Challhua Alto / Urpay - Mz. B Lote 05 (S/ 23,200)</option>
-                                    <option value="Meseta Tacllán Este - Mz. A Lote 03 (S/ 22,000)">Meseta Tacllán Este - Mz. A Lote 03 (S/ 22,000)</option>
-                                    <option value="Terrazas de Paria - Wilcahuain - Mz. C Lote 09 (S/ 25,800)">Terrazas de Paria - Wilcahuain - Mz. C Lote 09 (S/ 25,800)</option>
-                                    <option value="Planicie Toclla - Macashca - Mz. B Lote 06 (S/ 19,500)">Planicie Toclla - Macashca - Mz. B Lote 06 (S/ 19,500)</option>
-                                </select>
-                            </div>
-                            <div>
                                 <label class="block text-xs font-bold text-slate-700 mb-1">Subir Fotos de Documentos (DNI y Declaración Jurada)</label>
                                 <input type="file" multiple class="w-full border-2 border-dashed border-slate-300 rounded-xl px-3 py-2 text-xs bg-slate-50">
                             </div>
+                            <div class="flex items-end">
+                                <label class="flex items-start gap-2 text-xs text-slate-700 cursor-pointer">
+                                    <input type="checkbox" required checked class="mt-0.5 accent-blue-900">
+                                    <span>Autorizo el tratamiento de mis datos según la <strong>Ley N° 29733 (Protección de Datos Personales)</strong> y el envío de SMS de alerta temprana.</span>
+                                </label>
+                            </div>
                         </div>
 
-                        <label class="flex items-start gap-2 text-xs text-slate-700 cursor-pointer">
-                            <input type="checkbox" required checked class="mt-0.5 accent-blue-900">
-                            <span>Autorizo el uso de mis datos conforme a la <strong>Ley N° 29733 (Ley de Protección de Datos Personales)</strong> y la recepción de SMS preventivos de la Municipalidad Provincial de Huaraz.</span>
-                        </label>
-
-                        <button type="submit" class="btn-touch bg-muniGreen hover:bg-green-800 text-white px-6 py-3 text-sm shadow">
-                            <i class="fa-solid fa-paper-plane mr-2"></i> Registrar Expediente en Línea
-                        </button>
+                        <div class="flex flex-wrap gap-3">
+                            <button type="submit" class="btn-touch bg-muniGreen hover:bg-green-800 text-white px-6 py-3 text-sm shadow">
+                                <i class="fa-solid fa-paper-plane mr-2"></i> Registrar / Actualizar Solicitud en Línea
+                            </button>
+                            <button type="button" onclick="limpiarSesionDni()" class="btn-touch bg-slate-200 hover:bg-slate-300 text-slate-800 px-4 py-3 text-xs">
+                                <i class="fa-solid fa-eraser mr-1.5"></i> Limpiar Formulario
+                            </button>
+                        </div>
                     </form>
                 </div>
             </section>
@@ -518,13 +597,27 @@
 
             <!-- PESTAÑA 4: PUNTOS HUARAZ (VOLUNTARIADO Y RECOMPENSAS) -->
             <section id="sec-puntos" class="hidden space-y-6">
+                <!-- Buscador de Puntos por DNI -->
+                <div class="bg-white rounded-2xl p-4 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                        <span class="text-xs font-extrabold uppercase text-amber-600">Consulta de Voluntariado Municipal</span>
+                        <h3 id="lblNombrePuntos" class="text-base font-extrabold text-slate-900">Ingrese su DNI para consultar sus Puntos Huaraz acumulados</h3>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="text" id="inputPuntosDni" maxlength="9" placeholder="N° de DNI..." oninput="buscarDniEnTiempoReal(this.value, 'puntos')" class="border-2 border-slate-300 rounded-xl px-3 py-2 text-xs font-black w-40">
+                        <button type="button" onclick="buscarDniDesdePuntos()" class="bg-slate-900 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl">
+                            Consultar
+                        </button>
+                    </div>
+                </div>
+
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
                     <div class="bg-amber-500 text-slate-950 rounded-2xl p-6 shadow flex flex-col justify-between">
                         <div>
                             <span class="bg-slate-950 text-amber-400 text-xs font-extrabold px-2.5 py-1 rounded uppercase">Voluntariado Vecinal</span>
                             <h2 class="text-2xl font-black mt-2">Mis Puntos Huaraz</h2>
                         </div>
-                        <div id="txtPuntosUsuario" class="text-5xl font-black my-4">650 pts</div>
+                        <div id="txtPuntosUsuario" class="text-5xl font-black my-4">0 pts</div>
                         <p class="text-xs font-bold">Gane puntos en faenas de prevención y canjéelos por beneficios directos.</p>
                     </div>
 
@@ -663,23 +756,29 @@
             <div class="bg-white rounded-2xl p-5 border-l-8 border-muniBlue shadow-sm flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <span class="text-xs font-extrabold uppercase bg-blue-100 text-muniBlue px-2.5 py-1 rounded">Gestión Interna Municipal</span>
-                    <h2 class="text-xl font-extrabold text-slate-900 mt-1">Panel del Funcionario: Expedientes, Lotes y Denuncias</h2>
+                    <h2 class="text-xl font-extrabold text-slate-900 mt-1">Panel del Funcionario: Gestión de Expedientes, Lotes y Denuncias</h2>
                 </div>
-                <button type="button" onclick="habilitarNuevoTerrenoDemo()" class="btn-touch bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 text-xs shadow">
-                    <i class="fa-solid fa-plus-circle mr-1.5"></i> Habilitar Nuevo Lote Municipal
-                </button>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" onclick="restaurarPadronOriginal()" class="btn-touch bg-slate-200 hover:bg-slate-300 text-slate-900 px-3 py-2 text-xs">
+                        <i class="fa-solid fa-rotate-left mr-1"></i> Restaurar Padrón Inicial
+                    </button>
+                    <button type="button" onclick="habilitarNuevoTerrenoDemo()" class="btn-touch bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 text-xs shadow">
+                        <i class="fa-solid fa-plus-circle mr-1.5"></i> Habilitar Nuevo Lote Municipal
+                    </button>
+                </div>
             </div>
 
             <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 overflow-x-auto">
-                <h3 class="font-extrabold text-slate-900 mb-3">Expedientes en Trámite (Meta &lt; 30 días)</h3>
+                <h3 class="font-extrabold text-slate-900 mb-3">Padrón Oficial de Expedientes en Línea (Meta &lt; 30 días)</h3>
                 <table class="w-full text-left text-xs sm:text-sm border-collapse">
                     <thead>
                         <tr class="bg-slate-100 text-slate-700 uppercase text-xs font-extrabold">
-                            <th class="p-3">Código</th>
-                            <th class="p-3">Ciudadano / DNI</th>
-                            <th class="p-3">Lote Solicitado</th>
-                            <th class="p-3">Estado</th>
-                            <th class="p-3">Acción</th>
+                            <th class="p-3">DNI</th>
+                            <th class="p-3">Nombre Completo</th>
+                            <th class="p-3">Condición / Lote Asignado</th>
+                            <th class="p-3">Puntos Huaraz</th>
+                            <th class="p-3">Estado (&lt;30d)</th>
+                            <th class="p-3">Acciones Municipales</th>
                         </tr>
                     </thead>
                     <tbody id="tablaTramitesFuncionario" class="divide-y divide-slate-200"></tbody>
@@ -755,20 +854,28 @@
     <div id="modalDni" class="hidden fixed inset-0 z-50 bg-slate-950/70 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
             <div class="flex items-center justify-between border-b pb-2">
-                <h3 class="font-extrabold text-slate-900">Acceso Seguro con DNI</h3>
+                <h3 class="font-extrabold text-slate-900">Identificación Ciudadana con DNI (Padrón RENIEC)</h3>
                 <button type="button" onclick="cerrarModalDni()" class="font-bold text-slate-500">✕</button>
             </div>
             <div>
-                <label class="block text-xs font-bold text-slate-700 mb-1">Número de DNI (8 dígitos)</label>
-                <input type="text" id="inputModalDni" maxlength="8" value="31654892" class="w-full border-2 border-slate-300 rounded-xl px-3 py-2.5 font-black">
+                <label class="block text-xs font-bold text-slate-700 mb-1">Número de DNI</label>
+                <input type="text" id="inputModalDni" maxlength="9" value="" placeholder="Digite su N° de DNI..." oninput="autocompletarEnModal(this.value)" class="w-full border-2 border-blue-600 rounded-xl px-3 py-2.5 font-black">
             </div>
             <div>
-                <label class="block text-xs font-bold text-slate-700 mb-1">Nombre Completo</label>
-                <input type="text" id="inputModalNombre" value="Juan Carlos Rimac Cochachin" class="w-full border-2 border-slate-300 rounded-xl px-3 py-2.5 font-bold">
+                <label class="block text-xs font-bold text-slate-700 mb-1">Nombres y Apellidos</label>
+                <input type="text" id="inputModalNombre" value="" placeholder="Se autocompleta al validar su DNI" class="w-full border-2 border-slate-300 rounded-xl px-3 py-2.5 font-bold">
             </div>
-            <button type="button" onclick="guardarSesionDni()" class="btn-touch w-full bg-muniBlue text-white py-2.5 text-sm">
-                Guardar e Ingresar
-            </button>
+            <div id="avisoModalReniec" class="hidden bg-emerald-50 border border-emerald-300 text-emerald-900 p-2.5 rounded-xl text-xs font-bold">
+                ✓ Identidad verificada en el Padrón Municipal de Huaraz.
+            </div>
+            <div class="flex gap-2">
+                <button type="button" onclick="guardarSesionDni()" class="btn-touch flex-1 bg-muniBlue text-white py-2.5 text-sm">
+                    Consultar / Ingresar
+                </button>
+                <button type="button" onclick="limpiarSesionDni(); cerrarModalDni();" class="btn-touch bg-slate-200 text-slate-800 px-4 py-2.5 text-xs">
+                    Limpiar
+                </button>
+            </div>
         </div>
     </div>
 
@@ -854,22 +961,432 @@
             }
         ];
 
-        var listaTramites = [
-            { codigo: 'HZ-2026-0482', ciudadano: 'Juan Carlos Rimac (31654892)', lote: 'Terraza Alta Pongor Mz. A Lt. 02', estado: 'En Verificación (12/30 días)' },
-            { codigo: 'HZ-2026-0479', ciudadano: 'María Henostroza (31609214)', lote: 'Planicie Challhua Alto Mz. B Lt. 05', estado: 'Vía Rápida (8/15 días)' }
+        var STORAGE_KEY_PADRON = 'hls_padron_huaraz_v4';
+
+        var NOMBRES_LOTES = {
+            'S1': 'S1 - Terraza Alta Pongor (S/ 24,500)',
+            'S2': 'S2 - Planicie Challhua Alto / Urpay (S/ 23,200)',
+            'S3': 'S3 - Meseta Segura Tacllán Este (S/ 22,000)',
+            'S4': 'S4 - Terrazas de Paria - Wilcahuain (S/ 25,800)',
+            'S5': 'S5 - Planicie Toclla - Macashca (S/ 19,500)'
+        };
+
+        var PADRON_INICIAL_5_DNIS = [
+            {
+                dni: '70575827',
+                nombre: 'Huayaney Valverde Jheremy',
+                celular: '943812045',
+                sector: 'Pedregal Medio / Huaraz',
+                condicion: 'Alta Prioridad - Reubicación Preventiva',
+                lote: 'S1',
+                estado: 'Aprobado',
+                paso: 4,
+                diaTramite: 18,
+                expediente: 'EXP-2026-00101',
+                detallePaso: 'Día 18 de 30 • Expediente EXP-2026-00101',
+                puntos: 1200,
+                beneficio: 'Vía Rápida + 20% Dscto Arbitrios activo',
+                fecha: '12/10/2026'
+            },
+            {
+                dni: '70101478',
+                nombre: 'Sanchez Obregon Jairo Jose Aldair',
+                celular: '943551209',
+                sector: 'Faja Marginal Río Quilcay',
+                condicion: 'Alta Prioridad - Faja Marginal / Quebrada',
+                lote: 'S2',
+                estado: 'En Evaluación',
+                paso: 3,
+                diaTramite: 11,
+                expediente: 'EXP-2026-00102',
+                detallePaso: 'Día 11 de 30 • Expediente EXP-2026-00102',
+                puntos: 1000,
+                beneficio: 'Vía Rápida desbloqueada',
+                fecha: '19/10/2026'
+            },
+            {
+                dni: '71010347',
+                nombre: 'Campomanes Flores Josue Jermias',
+                celular: '943678912',
+                sector: 'Ladera Cerro Rataquenua',
+                condicion: 'Alta Prioridad - Ladera Inestable',
+                lote: 'S3',
+                estado: 'Aprobado',
+                paso: 4,
+                diaTramite: 21,
+                expediente: 'EXP-2026-00103',
+                detallePaso: 'Día 21 de 30 • Expediente EXP-2026-00103',
+                puntos: 650,
+                beneficio: '20% Dscto Arbitrios activo',
+                fecha: '09/10/2026'
+            },
+            {
+                dni: '727198191',
+                dniCorto: '72719819',
+                nombre: 'Alexanders Miguel Saaverdra Paredez',
+                celular: '943901456',
+                sector: 'Ribera Río Santa - Challhua',
+                condicion: 'Alta Prioridad - Faja Marginal / Quebrada',
+                lote: 'S4',
+                estado: 'En Evaluación',
+                paso: 2,
+                diaTramite: 6,
+                expediente: 'EXP-2026-00104',
+                detallePaso: 'Día 6 de 30 • Expediente EXP-2026-00104',
+                puntos: 500,
+                beneficio: '20% Dscto Arbitrios activo',
+                fecha: '24/10/2026'
+            },
+            {
+                dni: '75736401',
+                nombre: 'Maldonado Henostroza Diana Kimverly',
+                celular: '943334890',
+                sector: 'Quebrada Seca / Pedregal Alto',
+                condicion: 'Vivienda Familiar / Hacinamiento',
+                lote: 'S5',
+                estado: 'Aprobado',
+                paso: 4,
+                diaTramite: 16,
+                expediente: 'EXP-2026-00105',
+                detallePaso: 'Día 16 de 30 • Expediente EXP-2026-00105',
+                puntos: 1100,
+                beneficio: 'Vía Rápida + 20% Dscto Arbitrios',
+                fecha: '14/10/2026'
+            }
         ];
+
+        function cargarPadronDesdeStorage() {
+            try {
+                var guardado = localStorage.getItem(STORAGE_KEY_PADRON);
+                if (guardado) {
+                    var parsed = JSON.parse(guardado);
+                    if (Array.isArray(parsed) && parsed.length >= 5) {
+                        return parsed;
+                    }
+                }
+            } catch (err) {}
+            return JSON.parse(JSON.stringify(PADRON_INICIAL_5_DNIS));
+        }
+
+        function guardarPadronEnStorage() {
+            try {
+                localStorage.setItem(STORAGE_KEY_PADRON, JSON.stringify(padronCiudadanos));
+            } catch (err) {}
+        }
+
+        var padronCiudadanos = cargarPadronDesdeStorage();
+        var ciudadanoActivo = null;
 
         var listaDenuncias = [
             { codigo: 'DEN-9041', zona: 'Laderas del Cerro Rataquenua', reporte: 'Demarcación ilegal con tiza y cobro por lotes sin título.', estado: 'Operativo Procuraduría' },
             { codigo: 'DEN-9038', zona: 'Faja Marginal Río Quilcay', reporte: 'Instalación de esteras en zona intangible del río.', estado: 'Derivado a Fiscalía' }
         ];
 
-        var puntosUsuario = 650;
+        var puntosUsuario = 0;
         var loteSeleccionado = { sectorIdx: 0, codigo: 'Mz. A - Lote 02', precio: 24500, sunarp: 'P.E. 11094821 SUNARP' };
         var mapa = null;
         var capaBaseActual = null;
         var grupoSeguros = null;
         var grupoRiesgo = null;
+
+        function buscarCiudadanoEnPadron(dniBuscado) {
+            var limpio = String(dniBuscado || '').trim();
+            if (!limpio) return null;
+            for (var i = 0; i < padronCiudadanos.length; i++) {
+                var c = padronCiudadanos[i];
+                if (c.dni === limpio || (c.dniCorto && c.dniCorto === limpio)) {
+                    return c;
+                }
+            }
+            return null;
+        }
+
+        window.limpiarSesionDni = function(silencioso) {
+            ciudadanoActivo = null;
+            puntosUsuario = 0;
+
+            var bDesktop = document.getElementById('badgeDniDesktop');
+            var bMovil = document.getElementById('badgeDniMovil');
+            if (bDesktop) bDesktop.textContent = 'Identificarse con DNI';
+            if (bMovil) bMovil.textContent = 'Ingresar DNI';
+
+            var btnTopSalir = document.getElementById('btnCerrarSesionTop');
+            var btnBarraLimpiar = document.getElementById('btnLimpiarDniBarra');
+            if (btnTopSalir) btnTopSalir.className = 'hidden';
+            if (btnBarraLimpiar) btnBarraLimpiar.className = 'hidden';
+
+            var checkVal = document.getElementById('checkValidadoReniec');
+            var iconoRen = document.getElementById('iconoEstadoReniec');
+            var avisoForm = document.getElementById('avisoAutocompletadoForm');
+            var avisoMod = document.getElementById('avisoModalReniec');
+            if (checkVal) checkVal.classList.add('hidden');
+            if (avisoForm) avisoForm.classList.add('hidden');
+            if (avisoMod) avisoMod.classList.add('hidden');
+            if (iconoRen) iconoRen.className = 'w-10 h-10 rounded-xl bg-slate-200 text-slate-700 flex items-center justify-center font-black shrink-0';
+
+            var banner = document.getElementById('bannerCiudadanoActivo');
+            if (banner) {
+                banner.textContent = 'Ingrese su número de DNI para consultar su expediente, lote asignado o Puntos Huaraz.';
+                banner.className = 'text-sm sm:text-base font-black text-slate-700 mt-0.5';
+            }
+
+            var camposVaciar = ['inputHeaderDni', 'inputBuscadorDni', 'inputTramiteDni', 'inputTramiteNombre', 'inputTramiteCel', 'inputTramiteSector', 'inputTramiteCondicion', 'inputPuntosDni', 'inputModalDni', 'inputModalNombre'];
+            for (var i = 0; i < camposVaciar.length; i++) {
+                var el = document.getElementById(camposVaciar[i]);
+                if (el) el.value = '';
+            }
+
+            var txtPts = document.getElementById('txtPuntosUsuario');
+            var badgePts = document.getElementById('badgePuntosNav');
+            var lblNomPts = document.getElementById('lblNombrePuntos');
+            if (txtPts) txtPts.textContent = '0 pts';
+            if (badgePts) badgePts.textContent = '0 pts';
+            if (lblNomPts) lblNomPts.textContent = 'Ingrese su DNI para consultar sus Puntos Huaraz acumulados';
+
+            var titExp = document.getElementById('tituloExpedienteCiudadano');
+            var subExp = document.getElementById('subtituloCondicionCiudadano');
+            var badgeEst = document.getElementById('badgeViaRapida');
+            if (titExp) titExp.textContent = 'Seguimiento de Expediente Municipal';
+            if (subExp) subExp.textContent = 'Escriba su número de DNI arriba o en el formulario para consultar el avance de su solicitud.';
+            if (badgeEst) {
+                badgeEst.textContent = '⏳ Sin DNI consultado';
+                badgeEst.className = 'bg-slate-100 text-slate-700 text-xs font-extrabold px-3 py-1.5 rounded-xl border border-slate-300';
+            }
+
+            actualizarPasosVisuales(0);
+
+            if (!silencioso) {
+                window.mostrarAviso('Sesión Limpiada', 'Campos de DNI reiniciados. Listo para una nueva consulta.');
+            }
+        };
+
+        window.seleccionarCiudadanoPorDni = function(dni, silencioso, origenInput) {
+            var encontrado = buscarCiudadanoEnPadron(dni);
+            if (!encontrado) {
+                if (!silencioso) {
+                    window.mostrarAviso('DNI no registrado en el Padrón', 'El DNI ingresado no figura con expediente previo. Puede registrarlo en el formulario de Trámite.');
+                }
+                return;
+            }
+            ciudadanoActivo = encontrado;
+            puntosUsuario = encontrado.puntos;
+
+            var primerNombre = encontrado.nombre.split(' ')[0];
+            var bDesktop = document.getElementById('badgeDniDesktop');
+            var bMovil = document.getElementById('badgeDniMovil');
+            if (bDesktop) bDesktop.textContent = 'DNI: ' + encontrado.dni + ' (' + primerNombre + ')';
+            if (bMovil) bMovil.textContent = 'DNI ' + encontrado.dni;
+
+            var btnTopSalir = document.getElementById('btnCerrarSesionTop');
+            var btnBarraLimpiar = document.getElementById('btnLimpiarDniBarra');
+            if (btnTopSalir) btnTopSalir.className = 'inline-flex items-center gap-1.5 bg-red-600 hover:bg-red-500 text-white font-bold px-3 py-2 rounded-xl text-xs shadow';
+            if (btnBarraLimpiar) btnBarraLimpiar.className = 'btn-touch bg-slate-200 hover:bg-slate-300 text-slate-800 px-3 py-2 text-xs font-extrabold';
+
+            var checkVal = document.getElementById('checkValidadoReniec');
+            var iconoRen = document.getElementById('iconoEstadoReniec');
+            var avisoForm = document.getElementById('avisoAutocompletadoForm');
+            if (checkVal) checkVal.classList.remove('hidden');
+            if (avisoForm) avisoForm.classList.remove('hidden');
+            if (iconoRen) iconoRen.className = 'w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black shrink-0';
+
+            var descLote = NOMBRES_LOTES[encontrado.lote] || encontrado.lote;
+            var banner = document.getElementById('bannerCiudadanoActivo');
+            if (banner) {
+                banner.textContent = encontrado.nombre + ' (DNI: ' + encontrado.dni + ') • ' + encontrado.expediente + ' (' + encontrado.estado + ' - Día ' + encontrado.diaTramite + ' de 30) • ' + encontrado.puntos + ' Puntos Huaraz';
+                banner.className = 'text-sm sm:text-base font-black text-slate-900 mt-0.5';
+            }
+
+            var inpHeader = document.getElementById('inputHeaderDni');
+            var inpBuscador = document.getElementById('inputBuscadorDni');
+            var inpDni = document.getElementById('inputTramiteDni');
+            var inpPts = document.getElementById('inputPuntosDni');
+
+            if (inpHeader && origenInput !== 'header') inpHeader.value = encontrado.dni;
+            if (inpBuscador && origenInput !== 'buscador') inpBuscador.value = encontrado.dni;
+            if (inpDni && origenInput !== 'form') inpDni.value = encontrado.dni;
+            if (inpPts && origenInput !== 'puntos') inpPts.value = encontrado.dni;
+
+            var inpNom = document.getElementById('inputTramiteNombre');
+            var inpCel = document.getElementById('inputTramiteCel');
+            var inpSec = document.getElementById('inputTramiteSector');
+            var inpCond = document.getElementById('inputTramiteCondicion');
+            var inpLote = document.getElementById('inputTramiteLote');
+            if (inpNom) inpNom.value = encontrado.nombre;
+            if (inpCel) inpCel.value = encontrado.celular;
+            if (inpSec) inpSec.value = encontrado.sector || 'Huaraz';
+            if (inpCond) inpCond.value = encontrado.condicion;
+            if (inpLote) inpLote.value = encontrado.lote;
+
+            var modDni = document.getElementById('inputModalDni');
+            var modNom = document.getElementById('inputModalNombre');
+            if (modDni && origenInput !== 'modal') modDni.value = encontrado.dni;
+            if (modNom) modNom.value = encontrado.nombre;
+
+            var txtPts = document.getElementById('txtPuntosUsuario');
+            var badgePts = document.getElementById('badgePuntosNav');
+            var lblNomPts = document.getElementById('lblNombrePuntos');
+            if (txtPts) txtPts.textContent = encontrado.puntos + ' pts';
+            if (badgePts) badgePts.textContent = encontrado.puntos + ' pts';
+            if (lblNomPts) lblNomPts.textContent = 'Voluntario(a): ' + encontrado.nombre + ' (DNI ' + encontrado.dni + ') • ' + encontrado.beneficio;
+
+            var titExp = document.getElementById('tituloExpedienteCiudadano');
+            var subExp = document.getElementById('subtituloCondicionCiudadano');
+            var badgeEst = document.getElementById('badgeViaRapida');
+            if (titExp) titExp.textContent = encontrado.expediente + ' • ' + encontrado.nombre + ' (DNI ' + encontrado.dni + ')';
+            if (subExp) subExp.textContent = 'Sector: ' + (encontrado.sector || 'Huaraz') + ' • Prioridad: ' + encontrado.condicion + ' • Lote: ' + descLote;
+            if (badgeEst) {
+                badgeEst.textContent = (encontrado.estado === 'Aprobado' ? '✅ Estado: Aprobado (Día ' : '⏱️ Estado: En Evaluación (Día ') + encontrado.diaTramite + ' de 30)';
+                badgeEst.className = encontrado.estado === 'Aprobado'
+                    ? 'bg-emerald-100 text-emerald-900 text-xs font-extrabold px-3 py-1.5 rounded-xl border border-emerald-300'
+                    : 'bg-amber-100 text-amber-900 text-xs font-extrabold px-3 py-1.5 rounded-xl border border-amber-300';
+            }
+
+            actualizarPasosVisuales(encontrado.paso);
+
+            if (!silencioso) {
+                window.mostrarAviso('✓ Identidad Validada en RENIEC', encontrado.nombre + ' • ' + encontrado.expediente + ' (' + encontrado.estado + ' - Día ' + encontrado.diaTramite + '/30)');
+            }
+        };
+
+        function actualizarPasosVisuales(pasoActual) {
+            var cont = document.getElementById('pasosTramiteContainer');
+            if (!cont) return;
+            var definiciones = [
+                { num: 1, titulo: 'Validación DNI', desc: 'Identidad verificada en RENIEC.' },
+                { num: 2, titulo: 'Cruce SISFOH / SUNARP', desc: 'Verificación de no tener otra propiedad.' },
+                { num: 3, titulo: 'Verificación Técnica', desc: 'Evaluación de lote en terraza segura.' },
+                { num: 4, titulo: 'Título Municipal (<30d)', desc: 'Resolución de adjudicación lista.' }
+            ];
+            var html = '';
+            for (var i = 0; i < definiciones.length; i++) {
+                var d = definiciones[i];
+                if (pasoActual > 0 && (d.num < pasoActual || pasoActual === 4)) {
+                    html += '<div class="p-3.5 rounded-xl border-2 border-green-500 bg-green-50">' +
+                        '<div class="font-extrabold text-green-700">PASO ' + d.num + ' • COMPLETADO</div>' +
+                        '<div class="font-bold text-slate-900 text-sm mt-1">' + d.titulo + '</div>' +
+                        '<p class="text-slate-600 mt-0.5">' + d.desc + '</p></div>';
+                } else if (pasoActual > 0 && d.num === pasoActual) {
+                    html += '<div class="p-3.5 rounded-xl border-2 border-blue-600 bg-blue-50">' +
+                        '<div class="font-extrabold text-blue-700">PASO ' + d.num + ' • EN PROCESO</div>' +
+                        '<div class="font-bold text-slate-900 text-sm mt-1">' + d.titulo + '</div>' +
+                        '<p class="text-slate-600 mt-0.5">' + d.desc + '</p></div>';
+                } else {
+                    html += '<div class="p-3.5 rounded-xl border-2 border-slate-200 bg-slate-50">' +
+                        '<div class="font-extrabold text-slate-500">PASO ' + d.num + ' • PENDIENTE</div>' +
+                        '<div class="font-bold text-slate-800 text-sm mt-1">' + d.titulo + '</div>' +
+                        '<p class="text-slate-500 mt-0.5">' + d.desc + '</p></div>';
+                }
+            }
+            cont.innerHTML = html;
+        }
+
+        window.buscarDniEnTiempoReal = function(valor, origen) {
+            var limpio = String(valor || '').trim();
+            var encontrado = buscarCiudadanoEnPadron(limpio);
+            if (encontrado) {
+                window.seleccionarCiudadanoPorDni(encontrado.dni, false, origen);
+            }
+        };
+
+        window.consultarDniDesdeHeader = function() {
+            var inp = document.getElementById('inputHeaderDni');
+            var valor = inp ? inp.value : '';
+            window.seleccionarCiudadanoPorDni(valor, false, 'header');
+        };
+
+        window.buscarDniDesdePuntos = function() {
+            var inp = document.getElementById('inputPuntosDni');
+            var valor = inp ? inp.value : '';
+            window.seleccionarCiudadanoPorDni(valor, false, 'puntos');
+        };
+
+        window.buscarDniBoton = function() {
+            var inp = document.getElementById('inputBuscadorDni');
+            var valor = inp ? inp.value : '';
+            window.seleccionarCiudadanoPorDni(valor, false, 'buscador');
+        };
+
+        window.autocompletarEnModal = function(valor) {
+            var encontrado = buscarCiudadanoEnPadron(valor);
+            var avisoMod = document.getElementById('avisoModalReniec');
+            if (encontrado) {
+                var nom = document.getElementById('inputModalNombre');
+                if (nom) nom.value = encontrado.nombre;
+                if (avisoMod) avisoMod.classList.remove('hidden');
+            } else {
+                if (avisoMod) avisoMod.classList.add('hidden');
+            }
+        };
+
+        window.restaurarPadronOriginal = function() {
+            padronCiudadanos = JSON.parse(JSON.stringify(PADRON_INICIAL_5_DNIS));
+            guardarPadronEnStorage();
+            window.limpiarSesionDni(true);
+            renderizarTablasFuncionario();
+            window.mostrarAviso('Padrón Restaurado', 'Se restauraron los registros originales del Padrón Municipal.');
+        };
+
+        function actualizarPasosVisuales(pasoActual) {
+            var cont = document.getElementById('pasosTramiteContainer');
+            if (!cont) return;
+            var definiciones = [
+                { num: 1, titulo: 'Validación DNI', desc: 'Identidad verificada en RENIEC.' },
+                { num: 2, titulo: 'Cruce SISFOH / SUNARP', desc: 'Verificación de no tener otra propiedad.' },
+                { num: 3, titulo: 'Verificación Técnica', desc: 'Evaluación de lote en terraza segura.' },
+                { num: 4, titulo: 'Título Municipal (<30d)', desc: 'Resolución de adjudicación lista.' }
+            ];
+            var html = '';
+            for (var i = 0; i < definiciones.length; i++) {
+                var d = definiciones[i];
+                if (d.num < pasoActual || pasoActual === 4) {
+                    html += '<div class="p-3.5 rounded-xl border-2 border-green-500 bg-green-50">' +
+                        '<div class="font-extrabold text-green-700">PASO ' + d.num + ' • COMPLETADO</div>' +
+                        '<div class="font-bold text-slate-900 text-sm mt-1">' + d.titulo + '</div>' +
+                        '<p class="text-slate-600 mt-0.5">' + d.desc + '</p></div>';
+                } else if (d.num === pasoActual) {
+                    html += '<div class="p-3.5 rounded-xl border-2 border-blue-600 bg-blue-50">' +
+                        '<div class="font-extrabold text-blue-700">PASO ' + d.num + ' • EN PROCESO</div>' +
+                        '<div class="font-bold text-slate-900 text-sm mt-1">' + d.titulo + '</div>' +
+                        '<p class="text-slate-600 mt-0.5">' + d.desc + '</p></div>';
+                } else {
+                    html += '<div class="p-3.5 rounded-xl border-2 border-slate-200 bg-slate-50">' +
+                        '<div class="font-extrabold text-slate-500">PASO ' + d.num + ' • PENDIENTE</div>' +
+                        '<div class="font-bold text-slate-800 text-sm mt-1">' + d.titulo + '</div>' +
+                        '<p class="text-slate-500 mt-0.5">' + d.desc + '</p></div>';
+                }
+            }
+            cont.innerHTML = html;
+        }
+
+        window.buscarDniEnTiempoReal = function(valor) {
+            var limpio = String(valor || '').trim();
+            var encontrado = buscarCiudadanoEnPadron(limpio);
+            if (encontrado) {
+                window.seleccionarCiudadanoPorDni(encontrado.dni, false);
+            }
+        };
+
+        window.buscarDniBoton = function() {
+            var inp = document.getElementById('inputBuscadorDni');
+            var valor = inp ? inp.value : '';
+            window.seleccionarCiudadanoPorDni(valor, false);
+        };
+
+        window.autocompletarEnModal = function(valor) {
+            var encontrado = buscarCiudadanoEnPadron(valor);
+            if (encontrado) {
+                var nom = document.getElementById('inputModalNombre');
+                if (nom) nom.value = encontrado.nombre;
+            }
+        };
+
+        window.restaurarPadronOriginal = function() {
+            padronCiudadanos = JSON.parse(JSON.stringify(PADRON_INICIAL_5_DNIS));
+            guardarPadronEnStorage();
+            window.seleccionarCiudadanoPorDni('70575827', true);
+            renderizarTablasFuncionario();
+            window.mostrarAviso('Padrón Restaurado', 'Se restauraron los 5 DNIs originales de demostración.');
+        };
 
         window.iniciarMapaHuaraz = function() {
             var contenedor = document.getElementById('mapa-huaraz');
@@ -1082,35 +1599,82 @@
         };
 
         window.sumarPuntos = function(pts, motivo) {
+            if (!ciudadanoActivo) {
+                window.mostrarAviso('Identifíquese con su DNI', 'Primero digite su número de DNI para registrar Puntos Huaraz.');
+                return;
+            }
             puntosUsuario += pts;
+            ciudadanoActivo.puntos = puntosUsuario;
+            guardarPadronEnStorage();
             document.getElementById('txtPuntosUsuario').textContent = puntosUsuario + ' pts';
             document.getElementById('badgePuntosNav').textContent = puntosUsuario + ' pts';
-            window.mostrarAviso('Puntos Huaraz Registrados', 'Sumó +' + pts + ' puntos por ' + motivo + '. Total: ' + puntosUsuario + ' pts.');
+            renderizarTablasFuncionario();
+            window.seleccionarCiudadanoPorDni(ciudadanoActivo.dni, true);
+            window.mostrarAviso('Puntos Huaraz Registrados', ciudadanoActivo.nombre + ' sumó +' + pts + ' pts por ' + motivo + '. Total: ' + puntosUsuario + ' pts.');
         };
 
         window.canjearPuntos = function(costo, beneficio) {
+            if (!ciudadanoActivo) {
+                window.mostrarAviso('Identifíquese con su DNI', 'Primero digite su número de DNI para canjear sus Puntos Huaraz.');
+                return;
+            }
             if (puntosUsuario < costo) {
                 window.mostrarAviso('Puntos Insuficientes', 'Necesita ' + costo + ' puntos para canjear ' + beneficio + '.');
                 return;
             }
             puntosUsuario -= costo;
-            document.getElementById('txtPuntosUsuario').textContent = puntosUsuario + ' pts';
-            document.getElementById('badgePuntosNav').textContent = puntosUsuario + ' pts';
+            ciudadanoActivo.puntos = puntosUsuario;
             if (costo === 1000) {
-                document.getElementById('badgeViaRapida').textContent = '⚡ VÍA RÁPIDA ACTIVADA: Resolución en menos de 15 días';
+                ciudadanoActivo.detallePaso = '⚡ Vía Rápida Activada (< 15 días)';
             }
-            window.mostrarAviso('Beneficio Activado', 'Canjeó con éxito: ' + beneficio);
+            guardarPadronEnStorage();
+            window.seleccionarCiudadanoPorDni(ciudadanoActivo.dni, true);
+            renderizarTablasFuncionario();
+            window.mostrarAviso('Beneficio Activado', ciudadanoActivo.nombre + ' canjeó con éxito: ' + beneficio);
         };
 
         window.enviarTramite = function(e) {
             e.preventDefault();
-            var dni = document.getElementById('inputTramiteDni').value;
+            var dni = String(document.getElementById('inputTramiteDni').value || '').trim();
             var nom = document.getElementById('inputTramiteNombre').value;
+            var cel = document.getElementById('inputTramiteCel').value;
+            var sec = document.getElementById('inputTramiteSector').value;
+            var cond = document.getElementById('inputTramiteCondicion').value;
             var lote = document.getElementById('inputTramiteLote').value;
-            var cod = 'HZ-2026-0' + Math.floor(500 + Math.random() * 400);
-            listaTramites.unshift({ codigo: cod, ciudadano: nom + ' (' + dni + ')', lote: lote, estado: 'Recibido (< 30 días)' });
+
+            var existente = buscarCiudadanoEnPadron(dni);
+            if (existente) {
+                existente.nombre = nom;
+                existente.celular = cel;
+                existente.sector = sec;
+                existente.condicion = cond;
+                existente.lote = lote;
+                ciudadanoActivo = existente;
+            } else {
+                var nuevoExp = 'EXP-2026-00' + (101 + padronCiudadanos.length);
+                var nuevo = {
+                    dni: dni,
+                    nombre: nom,
+                    celular: cel,
+                    sector: sec || 'Huaraz',
+                    condicion: cond || 'Solicitante registrado en línea',
+                    lote: lote,
+                    estado: 'En Evaluación',
+                    paso: 2,
+                    diaTramite: 1,
+                    expediente: nuevoExp,
+                    detallePaso: 'Día 1 de 30 • Expediente ' + nuevoExp,
+                    puntos: 500,
+                    beneficio: 'Registro inicial',
+                    fecha: '30/10/2026'
+                };
+                padronCiudadanos.unshift(nuevo);
+                ciudadanoActivo = nuevo;
+            }
+            guardarPadronEnStorage();
             renderizarTablasFuncionario();
-            window.mostrarAviso('Trámite Registrado (' + cod + ')', 'Su solicitud fue enviada. Tiempo máximo de resolución: 30 días.');
+            window.seleccionarCiudadanoPorDni(ciudadanoActivo.dni, true);
+            window.mostrarAviso('Expediente Guardado', 'Datos actualizados para ' + nom + ' (DNI ' + dni + ').');
         };
 
         window.fijarGpsDenuncia = function() {
@@ -1133,13 +1697,23 @@
             var tbT = document.getElementById('tablaTramitesFuncionario');
             if (tbT) {
                 var htmlT = '';
-                for (var i = 0; i < listaTramites.length; i++) {
-                    var t = listaTramites[i];
-                    htmlT += '<tr class="border-b"><td class="p-3 font-black text-blue-900">' + t.codigo + '</td>' +
-                        '<td class="p-3 font-semibold">' + t.ciudadano + '</td>' +
-                        '<td class="p-3">' + t.lote + '</td>' +
-                        '<td class="p-3"><span class="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded">' + t.estado + '</span></td>' +
-                        '<td class="p-3"><button type="button" onclick="aprobarExpediente(' + i + ')" class="bg-green-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg">Aprobar Lote</button></td></tr>';
+                for (var i = 0; i < padronCiudadanos.length; i++) {
+                    var c = padronCiudadanos[i];
+                    var descLote = NOMBRES_LOTES[c.lote] || c.lote;
+                    var badgeColor = c.estado === 'Aprobado'
+                        ? 'bg-green-100 text-green-800 border border-green-300'
+                        : 'bg-amber-100 text-amber-900 border border-amber-300';
+                    htmlT += '<tr class="border-b hover:bg-slate-50">' +
+                        '<td class="p-3 font-black text-blue-900">' + c.dni + '<div class="text-[10px] text-slate-500">' + (c.expediente || '') + '</div></td>' +
+                        '<td class="p-3 font-extrabold text-slate-900">' + c.nombre + '<div class="text-[11px] text-slate-500 font-normal">Cel: ' + c.celular + ' • ' + (c.sector || '') + '</div></td>' +
+                        '<td class="p-3"><div class="font-bold text-slate-800">' + descLote + '</div><div class="text-[11px] text-slate-500">' + c.condicion + '</div></td>' +
+                        '<td class="p-3 font-black text-amber-600">' + c.puntos + ' pts</td>' +
+                        '<td class="p-3"><span class="' + badgeColor + ' text-xs font-bold px-2.5 py-1 rounded-lg inline-block">' + c.estado + ' (Día ' + (c.diaTramite || 15) + '/30)</span></td>' +
+                        '<td class="p-3"><div class="flex flex-wrap gap-1.5">' +
+                        '<button type="button" onclick="aprobarExpediente(' + i + ')" class="bg-green-700 hover:bg-green-800 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg">Aprobar</button>' +
+                        '<button type="button" onclick="sumarPuntosFuncionario(' + i + ')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-extrabold px-2.5 py-1.5 rounded-lg">+500 pts</button>' +
+                        '<button type="button" onclick="seleccionarCiudadanoPorDni(\'' + c.dni + '\'); cambiarRol(\'ciudadano\');" class="bg-blue-900 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg">Ver Ficha</button>' +
+                        '</div></td></tr>';
                 }
                 tbT.innerHTML = htmlT;
             }
@@ -1160,10 +1734,24 @@
         }
 
         window.aprobarExpediente = function(idx) {
-            if (listaTramites[idx]) {
-                listaTramites[idx].estado = '✅ Adjudicado con Título';
+            if (padronCiudadanos[idx]) {
+                padronCiudadanos[idx].estado = 'Aprobado';
+                padronCiudadanos[idx].paso = 4;
+                padronCiudadanos[idx].detallePaso = 'Título Municipal Listo (< 30 días)';
+                guardarPadronEnStorage();
                 renderizarTablasFuncionario();
-                window.mostrarAviso('Expediente Aprobado', 'Lote formal adjudicado en menos de 30 días.');
+                window.seleccionarCiudadanoPorDni(padronCiudadanos[idx].dni, true);
+                window.mostrarAviso('Expediente Aprobado', 'Se aprobó el lote para ' + padronCiudadanos[idx].nombre + '.');
+            }
+        };
+
+        window.sumarPuntosFuncionario = function(idx) {
+            if (padronCiudadanos[idx]) {
+                padronCiudadanos[idx].puntos += 500;
+                guardarPadronEnStorage();
+                renderizarTablasFuncionario();
+                window.seleccionarCiudadanoPorDni(padronCiudadanos[idx].dni, true);
+                window.mostrarAviso('Puntos Asignados', '+500 Puntos Huaraz para ' + padronCiudadanos[idx].nombre + '.');
             }
         };
 
@@ -1214,14 +1802,24 @@
         };
 
         window.guardarSesionDni = function() {
-            var dni = document.getElementById('inputModalDni').value;
-            var nom = document.getElementById('inputModalNombre').value;
-            document.getElementById('badgeDniDesktop').textContent = 'DNI: ' + dni + ' (' + nom.split(' ')[0] + ')';
-            document.getElementById('badgeDniMovil').textContent = 'DNI ' + dni;
-            document.getElementById('inputTramiteDni').value = dni;
-            document.getElementById('inputTramiteNombre').value = nom;
+            var dni = String(document.getElementById('inputModalDni').value || '').trim();
+            var nom = String(document.getElementById('inputModalNombre').value || '').trim();
+            if (!dni) {
+                window.mostrarAviso('Ingrese un DNI', 'Por favor digite su número de DNI.');
+                return;
+            }
+            var encontrado = buscarCiudadanoEnPadron(dni);
+            if (encontrado) {
+                window.seleccionarCiudadanoPorDni(encontrado.dni, false, 'modal');
+            } else {
+                var nombreMostrar = nom || 'Ciudadano en consulta';
+                document.getElementById('badgeDniDesktop').textContent = 'DNI: ' + dni + ' (' + nombreMostrar.split(' ')[0] + ')';
+                document.getElementById('badgeDniMovil').textContent = 'DNI ' + dni;
+                document.getElementById('inputTramiteDni').value = dni;
+                document.getElementById('inputTramiteNombre').value = nom;
+                window.mostrarAviso('Sesión Iniciada', 'Bienvenido(a), ' + nombreMostrar);
+            }
             window.cerrarModalDni();
-            window.mostrarAviso('Sesión Iniciada', 'Bienvenido(a), ' + nom);
         };
 
         window.addEventListener('DOMContentLoaded', function() {
@@ -1229,6 +1827,7 @@
             window.renderizarPlanoManzanas();
             window.calcularCuota();
             renderizarTablasFuncionario();
+            window.limpiarSesionDni(true);
             window.iniciarMapaHuaraz();
         });
     </script>
